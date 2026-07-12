@@ -154,7 +154,7 @@ function assigneeLabel(task: Task, member?: WorkspaceMember): { node: React.Reac
     return {
       node: (
         <span className="flex items-center gap-1">
-          <HumanAvatar name={member.display_name} url={member.avatar_url} size="xs" />
+          <HumanAvatar initials={initialsOf(member.display_name)} size="xs" />
           {member.display_name ?? "Member"}
         </span>
       ),
