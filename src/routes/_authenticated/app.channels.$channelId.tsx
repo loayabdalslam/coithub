@@ -127,6 +127,17 @@ function ChannelView() {
             </div>
             <div className="text-xs text-muted-foreground">{channel?.topic}</div>
           </div>
+          <button
+            onClick={() => setTasksOpen((v) => !v)}
+            className={`rounded-md border px-2.5 py-1.5 text-xs ${
+              tasksOpen
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:bg-secondary"
+            }`}
+            title="Task updates captured in this channel"
+          >
+            ✓ Tasks
+          </button>
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-auto px-6 py-6">
