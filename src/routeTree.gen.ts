@@ -9,38 +9,213 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as InviteTokenRouteImport } from './routes/invite.$token'
+import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
+import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
+import { Route as AuthenticatedAppTasksRouteImport } from './routes/_authenticated/app.tasks'
+import { Route as AuthenticatedAppPetsRouteImport } from './routes/_authenticated/app.pets'
+import { Route as AuthenticatedAppDecisionsRouteImport } from './routes/_authenticated/app.decisions'
+import { Route as AuthenticatedAppDashboardRouteImport } from './routes/_authenticated/app.dashboard'
+import { Route as AuthenticatedAppSettingsPetsRouteImport } from './routes/_authenticated/app.settings.pets'
+import { Route as AuthenticatedAppSettingsKeysRouteImport } from './routes/_authenticated/app.settings.keys'
+import { Route as AuthenticatedAppChannelsChannelIdRouteImport } from './routes/_authenticated/app.channels.$channelId'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InviteTokenRoute = InviteTokenRouteImport.update({
+  id: '/invite/$token',
+  path: '/invite/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAppRoute = AuthenticatedAppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const AuthenticatedAppTasksRoute = AuthenticatedAppTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const AuthenticatedAppPetsRoute = AuthenticatedAppPetsRouteImport.update({
+  id: '/pets',
+  path: '/pets',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
+const AuthenticatedAppDecisionsRoute =
+  AuthenticatedAppDecisionsRouteImport.update({
+    id: '/decisions',
+    path: '/decisions',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppDashboardRoute =
+  AuthenticatedAppDashboardRouteImport.update({
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppSettingsPetsRoute =
+  AuthenticatedAppSettingsPetsRouteImport.update({
+    id: '/settings/pets',
+    path: '/settings/pets',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppSettingsKeysRoute =
+  AuthenticatedAppSettingsKeysRouteImport.update({
+    id: '/settings/keys',
+    path: '/settings/keys',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
+const AuthenticatedAppChannelsChannelIdRoute =
+  AuthenticatedAppChannelsChannelIdRouteImport.update({
+    id: '/channels/$channelId',
+    path: '/channels/$channelId',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/app': typeof AuthenticatedAppRouteWithChildren
+  '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/invite/$token': typeof InviteTokenRoute
+  '/app/dashboard': typeof AuthenticatedAppDashboardRoute
+  '/app/decisions': typeof AuthenticatedAppDecisionsRoute
+  '/app/pets': typeof AuthenticatedAppPetsRoute
+  '/app/tasks': typeof AuthenticatedAppTasksRoute
+  '/app/': typeof AuthenticatedAppIndexRoute
+  '/app/channels/$channelId': typeof AuthenticatedAppChannelsChannelIdRoute
+  '/app/settings/keys': typeof AuthenticatedAppSettingsKeysRoute
+  '/app/settings/pets': typeof AuthenticatedAppSettingsPetsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/onboarding': typeof AuthenticatedOnboardingRoute
+  '/invite/$token': typeof InviteTokenRoute
+  '/app/dashboard': typeof AuthenticatedAppDashboardRoute
+  '/app/decisions': typeof AuthenticatedAppDecisionsRoute
+  '/app/pets': typeof AuthenticatedAppPetsRoute
+  '/app/tasks': typeof AuthenticatedAppTasksRoute
+  '/app': typeof AuthenticatedAppIndexRoute
+  '/app/channels/$channelId': typeof AuthenticatedAppChannelsChannelIdRoute
+  '/app/settings/keys': typeof AuthenticatedAppSettingsKeysRoute
+  '/app/settings/pets': typeof AuthenticatedAppSettingsPetsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
+  '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
+  '/invite/$token': typeof InviteTokenRoute
+  '/_authenticated/app/dashboard': typeof AuthenticatedAppDashboardRoute
+  '/_authenticated/app/decisions': typeof AuthenticatedAppDecisionsRoute
+  '/_authenticated/app/pets': typeof AuthenticatedAppPetsRoute
+  '/_authenticated/app/tasks': typeof AuthenticatedAppTasksRoute
+  '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
+  '/_authenticated/app/channels/$channelId': typeof AuthenticatedAppChannelsChannelIdRoute
+  '/_authenticated/app/settings/keys': typeof AuthenticatedAppSettingsKeysRoute
+  '/_authenticated/app/settings/pets': typeof AuthenticatedAppSettingsPetsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/app'
+    | '/onboarding'
+    | '/invite/$token'
+    | '/app/dashboard'
+    | '/app/decisions'
+    | '/app/pets'
+    | '/app/tasks'
+    | '/app/'
+    | '/app/channels/$channelId'
+    | '/app/settings/keys'
+    | '/app/settings/pets'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/onboarding'
+    | '/invite/$token'
+    | '/app/dashboard'
+    | '/app/decisions'
+    | '/app/pets'
+    | '/app/tasks'
+    | '/app'
+    | '/app/channels/$channelId'
+    | '/app/settings/keys'
+    | '/app/settings/pets'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/app'
+    | '/_authenticated/onboarding'
+    | '/invite/$token'
+    | '/_authenticated/app/dashboard'
+    | '/_authenticated/app/decisions'
+    | '/_authenticated/app/pets'
+    | '/_authenticated/app/tasks'
+    | '/_authenticated/app/'
+    | '/_authenticated/app/channels/$channelId'
+    | '/_authenticated/app/settings/keys'
+    | '/_authenticated/app/settings/pets'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  InviteTokenRoute: typeof InviteTokenRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +223,131 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invite/$token': {
+      id: '/invite/$token'
+      path: '/invite/$token'
+      fullPath: '/invite/$token'
+      preLoaderRoute: typeof InviteTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/onboarding': {
+      id: '/_authenticated/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/app': {
+      id: '/_authenticated/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AuthenticatedAppRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/app/': {
+      id: '/_authenticated/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/tasks': {
+      id: '/_authenticated/app/tasks'
+      path: '/tasks'
+      fullPath: '/app/tasks'
+      preLoaderRoute: typeof AuthenticatedAppTasksRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/pets': {
+      id: '/_authenticated/app/pets'
+      path: '/pets'
+      fullPath: '/app/pets'
+      preLoaderRoute: typeof AuthenticatedAppPetsRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/decisions': {
+      id: '/_authenticated/app/decisions'
+      path: '/decisions'
+      fullPath: '/app/decisions'
+      preLoaderRoute: typeof AuthenticatedAppDecisionsRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/dashboard': {
+      id: '/_authenticated/app/dashboard'
+      path: '/dashboard'
+      fullPath: '/app/dashboard'
+      preLoaderRoute: typeof AuthenticatedAppDashboardRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/settings/pets': {
+      id: '/_authenticated/app/settings/pets'
+      path: '/settings/pets'
+      fullPath: '/app/settings/pets'
+      preLoaderRoute: typeof AuthenticatedAppSettingsPetsRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/settings/keys': {
+      id: '/_authenticated/app/settings/keys'
+      path: '/settings/keys'
+      fullPath: '/app/settings/keys'
+      preLoaderRoute: typeof AuthenticatedAppSettingsKeysRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/channels/$channelId': {
+      id: '/_authenticated/app/channels/$channelId'
+      path: '/channels/$channelId'
+      fullPath: '/app/channels/$channelId'
+      preLoaderRoute: typeof AuthenticatedAppChannelsChannelIdRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
   }
 }
 
+interface AuthenticatedAppRouteChildren {
+  AuthenticatedAppDashboardRoute: typeof AuthenticatedAppDashboardRoute
+  AuthenticatedAppDecisionsRoute: typeof AuthenticatedAppDecisionsRoute
+  AuthenticatedAppPetsRoute: typeof AuthenticatedAppPetsRoute
+  AuthenticatedAppTasksRoute: typeof AuthenticatedAppTasksRoute
+  AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
+  AuthenticatedAppChannelsChannelIdRoute: typeof AuthenticatedAppChannelsChannelIdRoute
+  AuthenticatedAppSettingsKeysRoute: typeof AuthenticatedAppSettingsKeysRoute
+  AuthenticatedAppSettingsPetsRoute: typeof AuthenticatedAppSettingsPetsRoute
+}
+
+const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
+  AuthenticatedAppDashboardRoute: AuthenticatedAppDashboardRoute,
+  AuthenticatedAppDecisionsRoute: AuthenticatedAppDecisionsRoute,
+  AuthenticatedAppPetsRoute: AuthenticatedAppPetsRoute,
+  AuthenticatedAppTasksRoute: AuthenticatedAppTasksRoute,
+  AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
+  AuthenticatedAppChannelsChannelIdRoute:
+    AuthenticatedAppChannelsChannelIdRoute,
+  AuthenticatedAppSettingsKeysRoute: AuthenticatedAppSettingsKeysRoute,
+  AuthenticatedAppSettingsPetsRoute: AuthenticatedAppSettingsPetsRoute,
+}
+
+const AuthenticatedAppRouteWithChildren =
+  AuthenticatedAppRoute._addFileChildren(AuthenticatedAppRouteChildren)
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAppRoute: typeof AuthenticatedAppRouteWithChildren
+  AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAppRoute: AuthenticatedAppRouteWithChildren,
+  AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  InviteTokenRoute: InviteTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
