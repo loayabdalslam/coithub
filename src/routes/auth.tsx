@@ -26,6 +26,7 @@ function AuthPage() {
   >("idle");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   function afterAuth() {
     const pending =
@@ -96,7 +97,7 @@ function AuthPage() {
     try {
       if (mode === "signup") {
         const clean = username.trim().toLowerCase();
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -105,6 +106,14 @@ function AuthPage() {
           },
         });
         if (error) throw error;
+        if (!data.session) {
+          setNotice(
+            `Account created! We sent a confirmation link to ${email}. Confirm your email, then sign in.`,
+          );
+          setMode("signin");
+          setPassword("");
+          return;
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -198,6 +207,11 @@ function AuthPage() {
               placeholder="Password"
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
             />
+            {notice && (
+              <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700">
+                {notice}
+              </div>
+            )}
             {error && (
               <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                 {error}
@@ -216,6 +230,7 @@ function AuthPage() {
             onClick={() => {
               setMode(mode === "signin" ? "signup" : "signin");
               setError(null);
+              setNotice(null);
             }}
             className="mt-4 text-xs text-muted-foreground hover:text-foreground"
           >
