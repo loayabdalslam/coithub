@@ -451,6 +451,7 @@ function Composer({
       }
       setTyping(null);
       queryClient.invalidateQueries({ queryKey: ["messages", channelId] });
+      queryClient.invalidateQueries({ queryKey: ["channel-tasks", channelId] });
     }
   }
 
