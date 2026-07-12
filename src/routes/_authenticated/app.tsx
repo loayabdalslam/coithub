@@ -23,6 +23,13 @@ function WorkspaceShell() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // No workspace selected (or selection no longer valid) → go pick one.
+    if (!isLoading && !error && !workspace) {
+      navigate({ to: "/workspaces", replace: true });
+    }
+  }, [isLoading, error, workspace, navigate]);
+
+  useEffect(() => {
     if (workspace && !workspace.onboarded_at) {
       navigate({ to: "/onboarding", replace: true });
     }
@@ -35,10 +42,17 @@ function WorkspaceShell() {
       </div>
     );
   }
-  if (error || !workspace) {
+  if (error) {
     return (
       <div className="flex h-screen items-center justify-center bg-background text-sm text-destructive">
         Failed to load workspace: {error?.message ?? "unknown"}
+      </div>
+    );
+  }
+  if (!workspace) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+        Choosing a workspace…
       </div>
     );
   }
@@ -49,6 +63,7 @@ function WorkspaceShell() {
       </div>
     );
   }
+
 
   return (
     <div className="flex h-screen w-screen flex-col bg-background text-foreground">
@@ -102,6 +117,12 @@ function TopBar({ workspaceName, workspaceId }: { workspaceName: string; workspa
         </Link>
         <span className="text-xs text-muted-foreground">/</span>
         <span className="rounded px-2 py-1 text-sm">{workspaceName}</span>
+        <Link
+          to="/workspaces"
+          className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+        >
+          Switch
+        </Link>
       </div>
       <div className="flex flex-1 justify-center">
         <div className="flex w-full max-w-lg items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-muted-foreground">

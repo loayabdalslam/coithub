@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { previewInvite, acceptInvite } from "@/lib/workspace";
+import { previewInvite, acceptInvite, setSelectedWorkspaceId } from "@/lib/workspace";
 
 export const Route = createFileRoute("/invite/$token")({
   head: () => ({ meta: [{ title: "Join workspace — Coithub" }] }),
@@ -42,7 +42,8 @@ function AcceptInvitePage() {
   async function join() {
     setState({ kind: "joining" });
     try {
-      await acceptInvite(token);
+      const workspaceId = await acceptInvite(token);
+      if (workspaceId) setSelectedWorkspaceId(workspaceId);
       navigate({ to: "/app" });
     } catch (e) {
       setState({ kind: "error", message: e instanceof Error ? e.message : String(e) });
