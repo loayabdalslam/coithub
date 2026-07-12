@@ -26,6 +26,7 @@ function AuthPage() {
   >("idle");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   function afterAuth() {
     const pending =
