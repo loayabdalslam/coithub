@@ -230,6 +230,7 @@ function AuthPage() {
             onClick={() => {
               setMode(mode === "signin" ? "signup" : "signin");
               setError(null);
+              setNotice(null);
             }}
             className="mt-4 text-xs text-muted-foreground hover:text-foreground"
           >
