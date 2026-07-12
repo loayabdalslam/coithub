@@ -395,6 +395,7 @@ function Composer({
       return;
     }
     setBody("");
+    setMentionQuery(null);
     queryClient.invalidateQueries({ queryKey: ["messages", channelId] });
     setSending(false);
 
