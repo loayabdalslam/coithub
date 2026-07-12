@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AGENTS, AGENT_LIST, type AgentSlug } from "./agents";
+import { providerForModel } from "./providers";
+import { callProvider } from "./provider-call";
 
 type RunInput = {
   workspaceId: string;
@@ -75,33 +77,22 @@ export const runAgentWidget = createServerFn({ method: "POST" })
       const system =
         (cfg?.custom_system as string | null | undefined) || agent.system;
       const model = (cfg?.model as string | undefined) || "google/gemini-3-flash-preview";
+      const provider = providerForModel(model);
 
-      const apiKey = process.env.LOVABLE_API_KEY;
-      if (!apiKey) throw new Error("Missing LOVABLE_API_KEY on server.");
+      // Fetch the workspace API key for the selected provider.
+      const { data: keyData } = await supabase.rpc("get_workspace_api_key" as never, {
+        _workspace_id: workspaceId,
+        _provider: provider,
+      } as never);
+      const workspaceKey = (keyData as string | null) ?? null;
 
-      const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: "system",
-              content: `${system}\n\nYou are producing a background WIDGET of kind "${kind}" titled "${title}". ${KIND_INSTRUCTIONS[kind]} Reply with pure Markdown only — no preamble like "Sure" or "Here is". Stay under ~500 words.`,
-            },
-            { role: "user", content: prompt },
-          ],
-        }),
-      });
-
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => "");
-        throw new Error(`AI ${resp.status}: ${text.slice(0, 300)}`);
-      }
-      const json = (await resp.json()) as {
-        choices?: { message?: { content?: string } }[];
-      };
-      const markdown = json.choices?.[0]?.message?.content?.trim() ?? "";
+      const markdown = await callProvider(provider, model, [
+        {
+          role: "system",
+          content: `${system}\n\nYou are producing a background WIDGET of kind "${kind}" titled "${title}". ${KIND_INSTRUCTIONS[kind]} Reply with pure Markdown only — no preamble like "Sure" or "Here is". Stay under ~500 words.`,
+        },
+        { role: "user", content: prompt },
+      ], workspaceKey);
       if (!markdown) throw new Error("Empty widget output.");
 
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
