@@ -404,7 +404,7 @@ function TaskDetail({
           <Field label="Assigned from">
             {fromMember ? (
               <span className="flex items-center gap-1">
-                <HumanAvatar name={fromMember.display_name} url={fromMember.avatar_url} size="xs" />
+                <HumanAvatar initials={initialsOf(fromMember.display_name)} size="xs" />
                 {fromMember.display_name ?? "Member"}
               </span>
             ) : (
