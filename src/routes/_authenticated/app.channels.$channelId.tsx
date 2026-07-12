@@ -279,6 +279,14 @@ function ThreadPanel({
 }) {
   const parent = allMessages.find((m) => m.id === parentId);
   const replies = allMessages.filter((m) => m.parent_id === parentId);
+  const threadPets = Array.from(
+    new Set(
+      [parent, ...replies]
+        .filter((m): m is Message => Boolean(m))
+        .map((m) => m.pet_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
   return (
     <aside className="flex w-[420px] shrink-0 flex-col border-l border-border bg-surface">
       <div className="flex h-12 items-center justify-between border-b border-border px-4">
@@ -312,6 +320,7 @@ function ThreadPanel({
         channelName={`${channelName} thread`}
         workspaceId={workspaceId}
         parentId={parentId}
+        threadPets={threadPets}
       />
     </aside>
   );
@@ -322,11 +331,13 @@ function Composer({
   channelName,
   workspaceId,
   parentId,
+  threadPets,
 }: {
   channelId: string;
   channelName: string;
   workspaceId: string;
   parentId: string | null;
+  threadPets?: string[];
 }) {
   const { data: workspace } = useWorkspace();
   const { data: configs } = usePetConfigs(workspaceId || undefined);
@@ -421,14 +432,20 @@ function Composer({
 
     const mentioned = detectMentionedPets(text);
     const enabledPets = (configs ?? []).filter((c) => c.enabled).map((c) => c.pet_slug);
-    // Only mentioned agents (or auto-respond with all hired). If none hired
-    // and nothing mentioned, don't fabricate replies.
+    // Priority: explicit @mentions. Inside a thread with no mention, reply with
+    // the agents already participating in that thread so conversations continue.
+    // Otherwise fall back to auto-respond (all hired agents).
+    const threadResponders = (threadPets ?? []).filter(
+      (p): p is PetSlug => PET_LIST.includes(p as PetSlug) && enabledPets.includes(p as PetSlug),
+    );
     const pets =
       mentioned.length > 0
         ? mentioned.filter((p) => enabledPets.includes(p))
-        : autoRespond
-          ? enabledPets
-          : [];
+        : parentId && threadResponders.length > 0
+          ? threadResponders
+          : autoRespond
+            ? enabledPets
+            : [];
 
     if (pets.length > 0 && inserted) {
       // Sequential typing: one agent at a time with a small "thinking" delay
