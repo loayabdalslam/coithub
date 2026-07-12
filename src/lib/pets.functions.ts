@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PET_PROMPTS, PET_LIST, type PetSlug } from "./pets";
-import { providerForModel, type ProviderId } from "./providers";
+import { providerForModel } from "./providers";
+import { callProvider, type ChatMsg } from "./provider-call";
 
 type InvokeInput = {
   channelId: string;
@@ -19,115 +20,6 @@ function validate(input: unknown): InvokeInput {
   return { ...i, parentId: i.parentId ?? null };
 }
 
-type ChatMsg = { role: "system" | "user" | "assistant"; content: string };
-
-async function callProvider(
-  provider: ProviderId,
-  model: string,
-  messages: ChatMsg[],
-  workspaceKey: string | null,
-): Promise<string> {
-  // Strip provider prefix — some providers expect the raw model id.
-  const rawModel = model.includes("/") ? model.split("/").slice(1).join("/") : model;
-
-  const throwHttp = async (label: string, resp: Response) => {
-    const text = await resp.text().catch(() => "");
-    if (resp.status === 429) throw new Error(`${label}: rate limited — try again in a moment.`);
-    if (resp.status === 401 || resp.status === 403)
-      throw new Error(`${label}: invalid or missing API key.`);
-    if (resp.status === 402) throw new Error(`${label}: credits exhausted.`);
-    throw new Error(`${label} error ${resp.status}: ${text.slice(0, 300)}`);
-  };
-
-  if (provider === "google" || provider === "openai") {
-    // Lovable AI Gateway (no user key)
-    const apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) throw new Error("Missing LOVABLE_API_KEY on server.");
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages }),
-    });
-    if (!resp.ok) await throwHttp("Lovable AI", resp);
-    const json = (await resp.json()) as { choices?: { message?: { content?: string } }[] };
-    return json.choices?.[0]?.message?.content?.trim() ?? "";
-  }
-
-  if (!workspaceKey) {
-    throw new Error(
-      `No ${provider} API key configured for this workspace. An admin can add one in Settings → API Keys.`,
-    );
-  }
-
-  if (provider === "openrouter") {
-    const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${workspaceKey}`,
-        "HTTP-Referer": "https://coithub.app",
-        "X-Title": "Coithub",
-      },
-      body: JSON.stringify({ model: rawModel, messages }),
-    });
-    if (!resp.ok) await throwHttp("OpenRouter", resp);
-    const json = (await resp.json()) as { choices?: { message?: { content?: string } }[] };
-    return json.choices?.[0]?.message?.content?.trim() ?? "";
-  }
-
-  if (provider === "groq") {
-    const resp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${workspaceKey}` },
-      body: JSON.stringify({ model: rawModel, messages }),
-    });
-    if (!resp.ok) await throwHttp("Groq", resp);
-    const json = (await resp.json()) as { choices?: { message?: { content?: string } }[] };
-    return json.choices?.[0]?.message?.content?.trim() ?? "";
-  }
-
-  if (provider === "chatgpt") {
-    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${workspaceKey}` },
-      body: JSON.stringify({ model: rawModel, messages }),
-    });
-    if (!resp.ok) await throwHttp("OpenAI", resp);
-    const json = (await resp.json()) as { choices?: { message?: { content?: string } }[] };
-    return json.choices?.[0]?.message?.content?.trim() ?? "";
-  }
-
-  if (provider === "gemini") {
-    // Google AI Studio direct — flatten to Gemini "contents" format.
-    const sys = messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
-    const contents = messages
-      .filter((m) => m.role !== "system")
-      .map((m) => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }],
-      }));
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-      rawModel,
-    )}:generateContent?key=${encodeURIComponent(workspaceKey)}`;
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
-        contents,
-      }),
-    });
-    if (!resp.ok) await throwHttp("Gemini", resp);
-    const json = (await resp.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
-    };
-    return (
-      json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim() ?? ""
-    );
-  }
-
-  throw new Error(`Unknown provider: ${provider}`);
-}
 
 export const invokePet = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
