@@ -321,8 +321,49 @@ function Composer({
   const [typing, setTyping] = useState<PetSlug | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [widgetOpen, setWidgetOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const invoke = useServerFn(invokePet);
+
+  const mentionMatches =
+    mentionQuery === null
+      ? []
+      : PET_LIST.filter(
+          (slug) =>
+            slug.toLowerCase().includes(mentionQuery.toLowerCase()) ||
+            PET_PROMPTS[slug].name.toLowerCase().includes(mentionQuery.toLowerCase()),
+        );
+
+  function handleBodyChange(value: string, selectionStart: number) {
+    setBody(value);
+    const before = value.slice(0, selectionStart);
+    const match = before.match(/(?:^|\s)@(\w*)$/);
+    if (match) {
+      setMentionQuery(match[1]);
+      setMentionIndex(0);
+    } else {
+      setMentionQuery(null);
+    }
+  }
+
+  function insertMention(slug: PetSlug) {
+    const el = textareaRef.current;
+    const caret = el?.selectionStart ?? body.length;
+    const before = body.slice(0, caret);
+    const after = body.slice(caret);
+    const newBefore = before.replace(/(^|\s)@(\w*)$/, `$1@${slug} `);
+    const next = newBefore + after;
+    setBody(next);
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      el?.focus();
+      const pos = newBefore.length;
+      el?.setSelectionRange(pos, pos);
+    });
+  }
+
 
   async function send(e: FormEvent) {
     e.preventDefault();
