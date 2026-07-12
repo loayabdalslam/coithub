@@ -111,3 +111,29 @@ export function useChannelTasks(channelId: string | undefined) {
     queryFn: () => fetchChannelTasks(channelId as string),
   });
 }
+
+export type WorkspaceMember = { id: string; display_name: string | null; avatar_url: string | null };
+
+export async function fetchWorkspaceMembers(workspaceId: string): Promise<WorkspaceMember[]> {
+  const { data: mems, error } = await supabase
+    .from("memberships")
+    .select("user_id")
+    .eq("workspace_id", workspaceId);
+  if (error) throw error;
+  const ids = (mems ?? []).map((m) => (m as { user_id: string }).user_id);
+  if (ids.length === 0) return [];
+  const { data: profs, error: pErr } = await supabase
+    .from("profiles")
+    .select("id, display_name, avatar_url")
+    .in("id", ids);
+  if (pErr) throw pErr;
+  return (profs ?? []) as WorkspaceMember[];
+}
+
+export function useWorkspaceMembers(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: ["workspace-members", workspaceId],
+    enabled: !!workspaceId,
+    queryFn: () => fetchWorkspaceMembers(workspaceId as string),
+  });
+}
