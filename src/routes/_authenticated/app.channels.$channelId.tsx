@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { HumanAvatar, PetAvatar } from "@/components/PetAvatar";
 import { Markdown } from "@/components/Markdown";
-import { detectMentionedPets, PET_PROMPTS, type PetSlug } from "@/lib/pets";
+import { detectMentionedPets, PET_LIST, PET_PROMPTS, type PetSlug } from "@/lib/pets";
 import { invokePet } from "@/lib/pets.functions";
 import { useWorkspace } from "@/lib/workspace";
 import { usePetConfigs } from "@/lib/pet-configs";
@@ -321,8 +321,49 @@ function Composer({
   const [typing, setTyping] = useState<PetSlug | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [widgetOpen, setWidgetOpen] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const invoke = useServerFn(invokePet);
+
+  const mentionMatches =
+    mentionQuery === null
+      ? []
+      : PET_LIST.filter(
+          (slug) =>
+            slug.toLowerCase().includes(mentionQuery.toLowerCase()) ||
+            PET_PROMPTS[slug].name.toLowerCase().includes(mentionQuery.toLowerCase()),
+        );
+
+  function handleBodyChange(value: string, selectionStart: number) {
+    setBody(value);
+    const before = value.slice(0, selectionStart);
+    const match = before.match(/(?:^|\s)@(\w*)$/);
+    if (match) {
+      setMentionQuery(match[1]);
+      setMentionIndex(0);
+    } else {
+      setMentionQuery(null);
+    }
+  }
+
+  function insertMention(slug: PetSlug) {
+    const el = textareaRef.current;
+    const caret = el?.selectionStart ?? body.length;
+    const before = body.slice(0, caret);
+    const after = body.slice(caret);
+    const newBefore = before.replace(/(^|\s)@(\w*)$/, `$1@${slug} `);
+    const next = newBefore + after;
+    setBody(next);
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      el?.focus();
+      const pos = newBefore.length;
+      el?.setSelectionRange(pos, pos);
+    });
+  }
+
 
   async function send(e: FormEvent) {
     e.preventDefault();
@@ -354,6 +395,7 @@ function Composer({
       return;
     }
     setBody("");
+    setMentionQuery(null);
     queryClient.invalidateQueries({ queryKey: ["messages", channelId] });
     setSending(false);
 
@@ -394,11 +436,64 @@ function Composer({
 
   return (
     <div className="shrink-0 border-t border-border bg-background p-4">
-      <form onSubmit={send} className="surface-panel flex items-end gap-3 p-3">
+      <form onSubmit={send} className="surface-panel relative flex items-end gap-3 p-3">
+        {mentionQuery !== null && mentionMatches.length > 0 && (
+          <div className="absolute bottom-full left-0 mb-2 w-72 overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
+            <div className="border-b border-border px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+              Mention an agent
+            </div>
+            <ul className="max-h-64 overflow-auto py-1">
+              {mentionMatches.map((slug, i) => (
+                <li key={slug}>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      insertMention(slug);
+                    }}
+                    onMouseEnter={() => setMentionIndex(i)}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                      i === mentionIndex ? "bg-secondary" : "hover:bg-secondary"
+                    }`}
+                  >
+                    <PetAvatar petId={slug} size="xs" />
+                    <span className="font-medium">{PET_PROMPTS[slug].name}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      @{slug} · {PET_PROMPTS[slug].role}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <textarea
+          ref={textareaRef}
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={(e) => handleBodyChange(e.target.value, e.target.selectionStart)}
           onKeyDown={(e) => {
+            if (mentionQuery !== null && mentionMatches.length > 0) {
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setMentionIndex((i) => (i + 1) % mentionMatches.length);
+                return;
+              }
+              if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setMentionIndex((i) => (i - 1 + mentionMatches.length) % mentionMatches.length);
+                return;
+              }
+              if (e.key === "Enter" || e.key === "Tab") {
+                e.preventDefault();
+                insertMention(mentionMatches[mentionIndex]);
+                return;
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setMentionQuery(null);
+                return;
+              }
+            }
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               send(e as unknown as FormEvent);
@@ -407,6 +502,7 @@ function Composer({
           className="max-h-40 min-h-[60px] flex-1 resize-none bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none"
           placeholder={parentId ? "Reply in thread…" : `Message #${channelName}`}
         />
+
         <button
           type="button"
           onClick={() => setWidgetOpen(true)}
