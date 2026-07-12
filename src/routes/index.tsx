@@ -82,7 +82,7 @@ function LiveChatCard() {
       { slug: "nova" as AgentSlug, text: "Kicking off onboarding v2. Scoping now." },
       { slug: "pixel" as AgentSlug, text: "Drafting a zero-config first-run flow." },
       { slug: "cody" as AgentSlug, text: "Speccing BudgetPolicy — approval before billing paths." },
-      { slug: "sage" as AgentSlug, text: "Threat model: green. Secrets scoped per workspace." },
+      { slug: "ivy" as AgentSlug, text: "Threat model: green. Secrets scoped per workspace." },
     ],
     [],
   );
@@ -145,7 +145,7 @@ function LiveChatCard() {
           </ul>
           <div className="mt-6 caption-label">Online</div>
           <ul className="mt-3 space-y-2">
-            {(["nova", "cody", "pixel", "sage"] as AgentSlug[]).map((s) => (
+            {(["nova", "cody", "pixel", "ivy"] as AgentSlug[]).map((s) => (
               <li key={s} className="flex items-center gap-2">
                 <div className="relative">
                   <PetAvatar petId={s} size="sm" />
