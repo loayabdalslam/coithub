@@ -130,17 +130,20 @@ function RootComponent() {
 
   useEffect(() => {
     let mounted = true;
-    import("../integrations/supabase/client").then(({ supabase }) => {
+    let unsubscribe: (() => void) | undefined;
+    import("../integrations/supabase/client").then(({ supabase, hasSupabaseConfig }) => {
       if (!mounted) return;
+      if (!hasSupabaseConfig()) return;
       const { data } = supabase.auth.onAuthStateChange((event) => {
         if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
         router.invalidate();
         if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
       });
-      return () => data.subscription.unsubscribe();
+      unsubscribe = () => data.subscription.unsubscribe();
     });
     return () => {
       mounted = false;
+      unsubscribe?.();
     };
   }, [router, queryClient]);
 
