@@ -97,7 +97,7 @@ function AuthPage() {
     try {
       if (mode === "signup") {
         const clean = username.trim().toLowerCase();
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -106,6 +106,14 @@ function AuthPage() {
           },
         });
         if (error) throw error;
+        if (!data.session) {
+          setNotice(
+            `Account created! We sent a confirmation link to ${email}. Confirm your email, then sign in.`,
+          );
+          setMode("signin");
+          setPassword("");
+          return;
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
