@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PET_PROMPTS, PET_LIST, type PetSlug } from "./pets";
 import { providerForModel } from "./providers";
-import { callProvider, type ChatMsg } from "./provider-call";
+import { callProvider, extractCapturedTasks, type ChatMsg } from "./provider-call";
 
 type InvokeInput = {
   channelId: string;
