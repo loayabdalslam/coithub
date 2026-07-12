@@ -435,7 +435,9 @@ function Composer({
     // Priority: explicit @mentions. Inside a thread with no mention, reply with
     // the agents already participating in that thread so conversations continue.
     // Otherwise fall back to auto-respond (all hired agents).
-    const threadResponders = (threadPets ?? []).filter((p) => enabledPets.includes(p));
+    const threadResponders = (threadPets ?? []).filter(
+      (p): p is PetSlug => PET_LIST.includes(p as PetSlug) && enabledPets.includes(p as PetSlug),
+    );
     const pets =
       mentioned.length > 0
         ? mentioned.filter((p) => enabledPets.includes(p))
