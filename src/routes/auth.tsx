@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { hasSupabaseConfig, supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { ProviderIcon } from "@/components/ProviderIcon";
 
@@ -15,6 +15,7 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
+  const cloudConfigured = hasSupabaseConfig();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -35,14 +36,19 @@ function AuthPage() {
   }
 
   useEffect(() => {
+    if (!cloudConfigured) return;
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) afterAuth();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [cloudConfigured]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!cloudConfigured) {
+      setError("Lovable Cloud is required for sign in. Enable Cloud once workspace credits are available.");
+      return;
+    }
     setError(null);
     setBusy(true);
     try {
@@ -69,6 +75,10 @@ function AuthPage() {
   }
 
   async function google() {
+    if (!cloudConfigured) {
+      setError("Lovable Cloud is required for Google sign-in. Enable Cloud once workspace credits are available.");
+      return;
+    }
     setError(null);
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth("google", {
@@ -105,6 +115,11 @@ function AuthPage() {
               ? "Welcome back. Enter your workspace."
               : "Start collaborating with your team and AI agents."}
           </p>
+          {!cloudConfigured && (
+            <div className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+              Sign-in needs Lovable Cloud. Cloud activation was blocked because this workspace has no remaining credits.
+            </div>
+          )}
 
           <button
             onClick={google}
