@@ -568,3 +568,68 @@ function TypingDots() {
     </span>
   );
 }
+
+const TASK_STATUS_STYLES: Record<Task["status"], string> = {
+  Backlog: "bg-secondary text-muted-foreground",
+  "In progress": "bg-primary/10 text-primary",
+  Blocked: "bg-destructive/15 text-destructive",
+  Done: "bg-emerald-500/15 text-emerald-600",
+};
+
+function ChannelTasksWidget({ channelId, onClose }: { channelId: string; onClose: () => void }) {
+  const { data: tasks, isLoading } = useChannelTasks(channelId);
+  return (
+    <div className="flex w-80 shrink-0 flex-col border-l border-border bg-surface">
+      <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
+        <div className="text-sm font-medium">Task updates</div>
+        <button onClick={onClose} className="text-xs text-muted-foreground hover:text-foreground">
+          ✕
+        </button>
+      </div>
+      <div className="flex-1 overflow-auto p-3">
+        {isLoading ? (
+          <div className="py-10 text-center text-xs text-muted-foreground">Loading…</div>
+        ) : (tasks ?? []).length === 0 ? (
+          <div className="py-10 text-center text-xs text-muted-foreground">
+            No tasks captured from this channel yet. Agents add them automatically as work comes up.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {(tasks ?? []).map((t) => {
+              const agent = t.assigned_to_agent && PET_LIST.includes(t.assigned_to_agent as PetSlug)
+                ? (t.assigned_to_agent as PetSlug)
+                : null;
+              return (
+                <li key={t.id} className="rounded-md border border-border bg-surface-elevated p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] ${TASK_STATUS_STYLES[t.status]}`}>
+                      {t.status}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">{t.priority}</span>
+                  </div>
+                  <div className="mt-1.5 text-sm font-medium">{t.title}</div>
+                  {t.description && (
+                    <div className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                      {t.description}
+                    </div>
+                  )}
+                  <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+                    {agent ? (
+                      <span className="flex items-center gap-1">
+                        <PetAvatar petId={agent} size="xs" />
+                        {PET_PROMPTS[agent].name}
+                      </span>
+                    ) : (
+                      <span>Unassigned</span>
+                    )}
+                    {t.due_date && <span>Due {t.due_date}</span>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
