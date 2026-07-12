@@ -458,36 +458,45 @@ function Composer({
   return (
     <div className="shrink-0 border-t border-border bg-background p-4">
       <form onSubmit={send} className="surface-panel relative flex items-end gap-3 p-3">
-        {mentionQuery !== null && mentionMatches.length > 0 && (
+        {mentionQuery !== null && (
           <div className="absolute bottom-full left-0 mb-2 w-72 overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
             <div className="border-b border-border px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
               Mention an agent
             </div>
-            <ul className="max-h-64 overflow-auto py-1">
-              {mentionMatches.map((slug, i) => (
-                <li key={slug}>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      insertMention(slug);
-                    }}
-                    onMouseEnter={() => setMentionIndex(i)}
-                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
-                      i === mentionIndex ? "bg-secondary" : "hover:bg-secondary"
-                    }`}
-                  >
-                    <PetAvatar petId={slug} size="xs" />
-                    <span className="font-medium">{PET_PROMPTS[slug].name}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      @{slug} · {PET_PROMPTS[slug].role}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            {mentionMatches.length > 0 ? (
+              <ul className="max-h-64 overflow-auto py-1">
+                {mentionMatches.map((slug, i) => (
+                  <li key={slug}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        insertMention(slug);
+                      }}
+                      onMouseEnter={() => setMentionIndex(i)}
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm ${
+                        i === mentionIndex ? "bg-secondary" : "hover:bg-secondary"
+                      }`}
+                    >
+                      <PetAvatar petId={slug} size="xs" />
+                      <span className="font-medium">{PET_PROMPTS[slug].name}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        @{slug} · {PET_PROMPTS[slug].role}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="px-3 py-3 text-xs text-muted-foreground">
+                {hiredPets.length === 0
+                  ? "No agents hired in this workspace yet. Add agents from the Agents Hub to mention them."
+                  : "No hired agents match that name."}
+              </div>
+            )}
           </div>
         )}
+
         <textarea
           ref={textareaRef}
           value={body}
