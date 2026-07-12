@@ -432,14 +432,18 @@ function Composer({
 
     const mentioned = detectMentionedPets(text);
     const enabledPets = (configs ?? []).filter((c) => c.enabled).map((c) => c.pet_slug);
-    // Only mentioned agents (or auto-respond with all hired). If none hired
-    // and nothing mentioned, don't fabricate replies.
+    // Priority: explicit @mentions. Inside a thread with no mention, reply with
+    // the agents already participating in that thread so conversations continue.
+    // Otherwise fall back to auto-respond (all hired agents).
+    const threadResponders = (threadPets ?? []).filter((p) => enabledPets.includes(p));
     const pets =
       mentioned.length > 0
         ? mentioned.filter((p) => enabledPets.includes(p))
-        : autoRespond
-          ? enabledPets
-          : [];
+        : parentId && threadResponders.length > 0
+          ? threadResponders
+          : autoRespond
+            ? enabledPets
+            : [];
 
     if (pets.length > 0 && inserted) {
       // Sequential typing: one agent at a time with a small "thinking" delay
