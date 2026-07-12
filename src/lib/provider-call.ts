@@ -85,3 +85,43 @@ export async function callProvider(
 
   throw new Error(`Unknown provider: ${provider}`);
 }
+
+export type CapturedTask = {
+  title: string;
+  description: string;
+  priority: "Low" | "Medium" | "High";
+  assignee: string | null; // agent slug (validated by caller) or null
+  due_date: string | null; // YYYY-MM-DD or null
+};
+
+// Agents may emit ```task { ...json... }``` blocks to auto-capture actionable
+// tasks. This pulls them out and returns the reply with the blocks removed.
+export function extractCapturedTasks(text: string): { cleaned: string; tasks: CapturedTask[] } {
+  const tasks: CapturedTask[] = [];
+  const re = /```task\s*([\s\S]*?)```/g;
+  const cleaned = text
+    .replace(re, (_m, body: string) => {
+      try {
+        const j = JSON.parse(body.trim()) as Record<string, unknown>;
+        const title = typeof j.title === "string" ? j.title.trim() : "";
+        if (title) {
+          const pri = j.priority;
+          const dd = typeof j.due_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(j.due_date)
+            ? j.due_date
+            : null;
+          tasks.push({
+            title: title.slice(0, 300),
+            description: typeof j.description === "string" ? j.description : "",
+            priority: pri === "Low" || pri === "High" ? pri : "Medium",
+            assignee: typeof j.assignee === "string" && j.assignee ? j.assignee : null,
+            due_date: dd,
+          });
+        }
+      } catch {
+        /* ignore malformed blocks */
+      }
+      return "";
+    })
+    .trim();
+  return { cleaned, tasks };
+}
