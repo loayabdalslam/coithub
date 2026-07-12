@@ -327,10 +327,15 @@ function Composer({
   const queryClient = useQueryClient();
   const invoke = useServerFn(invokePet);
 
+  const hiredPets = (configs ?? [])
+    .filter((c) => c.enabled)
+    .map((c) => c.pet_slug as PetSlug)
+    .filter((slug) => PET_LIST.includes(slug));
+
   const mentionMatches =
     mentionQuery === null
       ? []
-      : PET_LIST.filter(
+      : hiredPets.filter(
           (slug) =>
             slug.toLowerCase().includes(mentionQuery.toLowerCase()) ||
             PET_PROMPTS[slug].name.toLowerCase().includes(mentionQuery.toLowerCase()),
