@@ -29,6 +29,10 @@ const PRIORITY_STYLES: Record<TaskPriority, string> = {
   High: "bg-destructive/15 text-destructive",
 };
 
+function initialsOf(name: string | null): string {
+  return (name ?? "?").trim().slice(0, 2).toUpperCase() || "?";
+}
+
 function TasksPage() {
   const { data: workspace } = useWorkspace();
   const workspaceId = workspace?.id;
