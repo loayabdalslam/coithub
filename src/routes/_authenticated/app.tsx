@@ -238,9 +238,13 @@ function InviteDialog({ workspaceId, onClose }: { workspaceId: string; onClose: 
   );
 }
 
-const NAV: { label: string; icon: string; to?: "/app/tasks" | "/app/pets" | "/app/dashboard" | "/app/decisions" }[] = [
-  { label: "Threads", icon: "💬" },
-  { label: "Mentions", icon: "@" },
+const NAV: {
+  label: string;
+  icon: string;
+  to?: "/app/threads" | "/app/mentions" | "/app/tasks" | "/app/pets" | "/app/dashboard" | "/app/decisions";
+}[] = [
+  { label: "Threads", to: "/app/threads", icon: "💬" },
+  { label: "Mentions", to: "/app/mentions", icon: "@" },
   { label: "Tasks", to: "/app/tasks", icon: "◇" },
   { label: "Agents", to: "/app/pets", icon: "◈" },
   { label: "Dashboard", to: "/app/dashboard", icon: "▤" },

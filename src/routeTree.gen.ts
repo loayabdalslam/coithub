@@ -17,8 +17,10 @@ import { Route as AuthenticatedWorkspacesRouteImport } from './routes/_authentic
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app.index'
+import { Route as AuthenticatedAppThreadsRouteImport } from './routes/_authenticated/app.threads'
 import { Route as AuthenticatedAppTasksRouteImport } from './routes/_authenticated/app.tasks'
 import { Route as AuthenticatedAppPetsRouteImport } from './routes/_authenticated/app.pets'
+import { Route as AuthenticatedAppMentionsRouteImport } from './routes/_authenticated/app.mentions'
 import { Route as AuthenticatedAppDecisionsRouteImport } from './routes/_authenticated/app.decisions'
 import { Route as AuthenticatedAppDashboardRouteImport } from './routes/_authenticated/app.dashboard'
 import { Route as AuthenticatedAppSettingsPetsRouteImport } from './routes/_authenticated/app.settings.pets'
@@ -64,6 +66,11 @@ const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppThreadsRoute = AuthenticatedAppThreadsRouteImport.update({
+  id: '/threads',
+  path: '/threads',
+  getParentRoute: () => AuthenticatedAppRoute,
+} as any)
 const AuthenticatedAppTasksRoute = AuthenticatedAppTasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
@@ -74,6 +81,12 @@ const AuthenticatedAppPetsRoute = AuthenticatedAppPetsRouteImport.update({
   path: '/pets',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppMentionsRoute =
+  AuthenticatedAppMentionsRouteImport.update({
+    id: '/mentions',
+    path: '/mentions',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppDecisionsRoute =
   AuthenticatedAppDecisionsRouteImport.update({
     id: '/decisions',
@@ -114,8 +127,10 @@ export interface FileRoutesByFullPath {
   '/invite/$token': typeof InviteTokenRoute
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/decisions': typeof AuthenticatedAppDecisionsRoute
+  '/app/mentions': typeof AuthenticatedAppMentionsRoute
   '/app/pets': typeof AuthenticatedAppPetsRoute
   '/app/tasks': typeof AuthenticatedAppTasksRoute
+  '/app/threads': typeof AuthenticatedAppThreadsRoute
   '/app/': typeof AuthenticatedAppIndexRoute
   '/app/channels/$channelId': typeof AuthenticatedAppChannelsChannelIdRoute
   '/app/settings/keys': typeof AuthenticatedAppSettingsKeysRoute
@@ -129,8 +144,10 @@ export interface FileRoutesByTo {
   '/invite/$token': typeof InviteTokenRoute
   '/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/app/decisions': typeof AuthenticatedAppDecisionsRoute
+  '/app/mentions': typeof AuthenticatedAppMentionsRoute
   '/app/pets': typeof AuthenticatedAppPetsRoute
   '/app/tasks': typeof AuthenticatedAppTasksRoute
+  '/app/threads': typeof AuthenticatedAppThreadsRoute
   '/app': typeof AuthenticatedAppIndexRoute
   '/app/channels/$channelId': typeof AuthenticatedAppChannelsChannelIdRoute
   '/app/settings/keys': typeof AuthenticatedAppSettingsKeysRoute
@@ -147,8 +164,10 @@ export interface FileRoutesById {
   '/invite/$token': typeof InviteTokenRoute
   '/_authenticated/app/dashboard': typeof AuthenticatedAppDashboardRoute
   '/_authenticated/app/decisions': typeof AuthenticatedAppDecisionsRoute
+  '/_authenticated/app/mentions': typeof AuthenticatedAppMentionsRoute
   '/_authenticated/app/pets': typeof AuthenticatedAppPetsRoute
   '/_authenticated/app/tasks': typeof AuthenticatedAppTasksRoute
+  '/_authenticated/app/threads': typeof AuthenticatedAppThreadsRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
   '/_authenticated/app/channels/$channelId': typeof AuthenticatedAppChannelsChannelIdRoute
   '/_authenticated/app/settings/keys': typeof AuthenticatedAppSettingsKeysRoute
@@ -165,8 +184,10 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/app/dashboard'
     | '/app/decisions'
+    | '/app/mentions'
     | '/app/pets'
     | '/app/tasks'
+    | '/app/threads'
     | '/app/'
     | '/app/channels/$channelId'
     | '/app/settings/keys'
@@ -180,8 +201,10 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/app/dashboard'
     | '/app/decisions'
+    | '/app/mentions'
     | '/app/pets'
     | '/app/tasks'
+    | '/app/threads'
     | '/app'
     | '/app/channels/$channelId'
     | '/app/settings/keys'
@@ -197,8 +220,10 @@ export interface FileRouteTypes {
     | '/invite/$token'
     | '/_authenticated/app/dashboard'
     | '/_authenticated/app/decisions'
+    | '/_authenticated/app/mentions'
     | '/_authenticated/app/pets'
     | '/_authenticated/app/tasks'
+    | '/_authenticated/app/threads'
     | '/_authenticated/app/'
     | '/_authenticated/app/channels/$channelId'
     | '/_authenticated/app/settings/keys'
@@ -270,6 +295,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/threads': {
+      id: '/_authenticated/app/threads'
+      path: '/threads'
+      fullPath: '/app/threads'
+      preLoaderRoute: typeof AuthenticatedAppThreadsRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/tasks': {
       id: '/_authenticated/app/tasks'
       path: '/tasks'
@@ -282,6 +314,13 @@ declare module '@tanstack/react-router' {
       path: '/pets'
       fullPath: '/app/pets'
       preLoaderRoute: typeof AuthenticatedAppPetsRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/mentions': {
+      id: '/_authenticated/app/mentions'
+      path: '/mentions'
+      fullPath: '/app/mentions'
+      preLoaderRoute: typeof AuthenticatedAppMentionsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/app/decisions': {
@@ -325,8 +364,10 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAppRouteChildren {
   AuthenticatedAppDashboardRoute: typeof AuthenticatedAppDashboardRoute
   AuthenticatedAppDecisionsRoute: typeof AuthenticatedAppDecisionsRoute
+  AuthenticatedAppMentionsRoute: typeof AuthenticatedAppMentionsRoute
   AuthenticatedAppPetsRoute: typeof AuthenticatedAppPetsRoute
   AuthenticatedAppTasksRoute: typeof AuthenticatedAppTasksRoute
+  AuthenticatedAppThreadsRoute: typeof AuthenticatedAppThreadsRoute
   AuthenticatedAppIndexRoute: typeof AuthenticatedAppIndexRoute
   AuthenticatedAppChannelsChannelIdRoute: typeof AuthenticatedAppChannelsChannelIdRoute
   AuthenticatedAppSettingsKeysRoute: typeof AuthenticatedAppSettingsKeysRoute
@@ -336,8 +377,10 @@ interface AuthenticatedAppRouteChildren {
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppDashboardRoute: AuthenticatedAppDashboardRoute,
   AuthenticatedAppDecisionsRoute: AuthenticatedAppDecisionsRoute,
+  AuthenticatedAppMentionsRoute: AuthenticatedAppMentionsRoute,
   AuthenticatedAppPetsRoute: AuthenticatedAppPetsRoute,
   AuthenticatedAppTasksRoute: AuthenticatedAppTasksRoute,
+  AuthenticatedAppThreadsRoute: AuthenticatedAppThreadsRoute,
   AuthenticatedAppIndexRoute: AuthenticatedAppIndexRoute,
   AuthenticatedAppChannelsChannelIdRoute:
     AuthenticatedAppChannelsChannelIdRoute,
@@ -372,3 +415,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
