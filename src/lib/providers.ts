@@ -1,16 +1,16 @@
-// AI provider catalog. "lovable" providers route through the built-in Lovable
-// AI Gateway (no key required). "byo" providers require a workspace API key
-// supplied by an admin via Settings → API Keys.
+// AI provider catalog. Every provider requires a workspace API key supplied by
+// an admin via Settings → API Keys. The Lovable AI Gateway is not used — the
+// provider selected in the frontend drives which API is called.
 
 export type ProviderId =
-  | "google" // Gemini via Lovable Gateway
-  | "openai" // OpenAI via Lovable Gateway
+  | "google" // Gemini via Google AI Studio key
+  | "openai" // OpenAI via your OpenAI key
   | "openrouter" // BYO OpenRouter key
   | "groq" // BYO Groq key
   | "gemini" // BYO Google AI Studio key
   | "chatgpt"; // BYO OpenAI key
 
-export type ProviderMode = "lovable" | "byo";
+export type ProviderMode = "byo";
 
 export type ProviderMeta = {
   name: string;
