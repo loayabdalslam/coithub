@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -26,6 +26,9 @@ type Profile = { id: string; display_name: string | null; avatar_url: string | n
 
 export const Route = createFileRoute("/_authenticated/app/channels/$channelId")({
   head: () => ({ meta: [{ title: "Channel — Coithub" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    thread: typeof search.thread === "string" ? search.thread : undefined,
+  }),
   component: ChannelView,
   errorComponent: ({ error }) => (
     <div className="p-10 text-destructive">Failed to load channel: {error.message}</div>
@@ -34,6 +37,8 @@ export const Route = createFileRoute("/_authenticated/app/channels/$channelId")(
 
 function ChannelView() {
   const { channelId } = Route.useParams();
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
   const [threadParentId, setThreadParentId] = useState<string | null>(null);
   const [tasksOpen, setTasksOpen] = useState(false);
@@ -114,8 +119,18 @@ function ChannelView() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages]);
 
-  // Reset thread when switching channels
-  useEffect(() => setThreadParentId(null), [channelId]);
+  // Keep direct links from the Threads/Mentions pages in sync with the side panel.
+  useEffect(() => setThreadParentId(search.thread ?? null), [channelId, search.thread]);
+
+  function openThread(parentId: string) {
+    setThreadParentId(parentId);
+    navigate({ search: (prev) => ({ ...prev, thread: parentId }) });
+  }
+
+  function closeThread() {
+    setThreadParentId(null);
+    navigate({ search: (prev) => ({ ...prev, thread: undefined }), replace: true });
+  }
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -156,7 +171,7 @@ function ChannelView() {
                   m={m}
                   profiles={profiles}
                   replyCount={replyCounts.get(m.id) ?? 0}
-                  onOpenThread={() => setThreadParentId(m.id)}
+                  onOpenThread={() => openThread(m.id)}
                 />
               ))}
             </ul>
@@ -179,7 +194,7 @@ function ChannelView() {
           parentId={threadParentId}
           allMessages={messages ?? []}
           profiles={profiles}
-          onClose={() => setThreadParentId(null)}
+          onClose={closeThread}
         />
       )}
 
