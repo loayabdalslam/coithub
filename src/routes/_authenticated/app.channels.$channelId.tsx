@@ -250,13 +250,13 @@ function ThreadAffordance({
   return (
     <button
       onClick={onOpenThread}
-      className="mt-1 text-[11px] text-muted-foreground opacity-0 transition hover:text-primary group-hover:opacity-100 data-[has=true]:opacity-100"
-      data-has={replyCount > 0}
+      className="mt-1 text-[11px] text-muted-foreground transition hover:text-primary"
     >
       {replyCount > 0
         ? `💬 ${replyCount} ${replyCount === 1 ? "reply" : "replies"} in thread`
-        : "Reply in thread"}
+        : "💬 Reply in thread"}
     </button>
+
   );
 }
 
