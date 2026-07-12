@@ -331,11 +331,13 @@ function Composer({
   channelName,
   workspaceId,
   parentId,
+  threadPets,
 }: {
   channelId: string;
   channelName: string;
   workspaceId: string;
   parentId: string | null;
+  threadPets?: string[];
 }) {
   const { data: workspace } = useWorkspace();
   const { data: configs } = usePetConfigs(workspaceId || undefined);
