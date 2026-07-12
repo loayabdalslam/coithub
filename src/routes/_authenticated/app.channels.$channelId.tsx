@@ -36,6 +36,7 @@ function ChannelView() {
   const { channelId } = Route.useParams();
   const queryClient = useQueryClient();
   const [threadParentId, setThreadParentId] = useState<string | null>(null);
+  const [tasksOpen, setTasksOpen] = useState(false);
 
   const { data: channel } = useQuery({
     queryKey: ["channel", channelId],
