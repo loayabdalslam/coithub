@@ -279,6 +279,14 @@ function ThreadPanel({
 }) {
   const parent = allMessages.find((m) => m.id === parentId);
   const replies = allMessages.filter((m) => m.parent_id === parentId);
+  const threadPets = Array.from(
+    new Set(
+      [parent, ...replies]
+        .filter((m): m is Message => Boolean(m))
+        .map((m) => m.pet_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  );
   return (
     <aside className="flex w-[420px] shrink-0 flex-col border-l border-border bg-surface">
       <div className="flex h-12 items-center justify-between border-b border-border px-4">
