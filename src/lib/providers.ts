@@ -24,13 +24,19 @@ export type ProviderMeta = {
 export const PROVIDERS: Record<ProviderId, ProviderMeta> = {
   google: {
     name: "Google Gemini",
-    blurb: "Fast, multimodal. Powered by the Lovable AI Gateway.",
-    mode: "lovable",
+    blurb: "Fast, multimodal. Call Gemini with your Google AI Studio key.",
+    mode: "byo",
+    keyLabel: "Google AI Studio key",
+    keyHelp: "From aistudio.google.com/apikey",
+    keyUrl: "https://aistudio.google.com/apikey",
   },
   openai: {
     name: "OpenAI GPT",
-    blurb: "Strong reasoning. Powered by the Lovable AI Gateway.",
-    mode: "lovable",
+    blurb: "Strong reasoning. Call OpenAI with your own API key.",
+    mode: "byo",
+    keyLabel: "OpenAI API key",
+    keyHelp: "Starts with sk-…",
+    keyUrl: "https://platform.openai.com/api-keys",
   },
   openrouter: {
     name: "OpenRouter",
