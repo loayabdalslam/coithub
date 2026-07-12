@@ -124,12 +124,12 @@ function ChannelView() {
 
   function openThread(parentId: string) {
     setThreadParentId(parentId);
-    navigate({ search: (prev) => ({ ...prev, thread: parentId }) });
+    navigate({ search: { thread: parentId } });
   }
 
   function closeThread() {
     setThreadParentId(null);
-    navigate({ search: (prev) => ({ ...prev, thread: undefined }), replace: true });
+    navigate({ search: {}, replace: true });
   }
 
   return (
