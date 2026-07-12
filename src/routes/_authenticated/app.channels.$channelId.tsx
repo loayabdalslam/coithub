@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { HumanAvatar, PetAvatar } from "@/components/PetAvatar";
 import { Markdown } from "@/components/Markdown";
-import { detectMentionedPets, PET_PROMPTS, type PetSlug } from "@/lib/pets";
+import { detectMentionedPets, PET_LIST, PET_PROMPTS, type PetSlug } from "@/lib/pets";
 import { invokePet } from "@/lib/pets.functions";
 import { useWorkspace } from "@/lib/workspace";
 import { usePetConfigs } from "@/lib/pet-configs";
