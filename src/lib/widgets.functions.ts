@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AGENTS, AGENT_LIST, type AgentSlug } from "./agents";
+import { providerForModel } from "./providers";
+import { callProvider } from "./provider-call";
 
 type RunInput = {
   workspaceId: string;
