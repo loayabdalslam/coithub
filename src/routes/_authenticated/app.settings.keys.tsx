@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_authenticated/app/settings/keys")({
   component: KeysSettings,
 });
 
-const BYO_PROVIDERS: ProviderId[] = ["openrouter", "groq", "gemini", "chatgpt"];
+const BYO_PROVIDERS: ProviderId[] = ["google", "openai", "openrouter", "groq", "gemini", "chatgpt"];
 
 type KeyRow = { provider: string; masked: string; hasKey: boolean };
 
