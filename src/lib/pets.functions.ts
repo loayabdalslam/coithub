@@ -94,15 +94,12 @@ export const invokePet = createServerFn({ method: "POST" })
     const provider = providerForModel(model);
     const systemPrompt = ((cfg as { custom_system?: string | null } | null)?.custom_system) || petCfg.system;
 
-    // Fetch workspace API key for BYO providers via SECURITY DEFINER function
-    let workspaceKey: string | null = null;
-    if (provider !== "google" && provider !== "openai") {
-      const { data: keyData } = await supabase.rpc("get_workspace_api_key" as never, {
-        _workspace_id: workspaceId,
-        _provider: provider,
-      } as never);
-      workspaceKey = (keyData as string | null) ?? null;
-    }
+    // Fetch the workspace API key for the selected provider via SECURITY DEFINER function
+    const { data: keyData } = await supabase.rpc("get_workspace_api_key" as never, {
+      _workspace_id: workspaceId,
+      _provider: provider,
+    } as never);
+    const workspaceKey = (keyData as string | null) ?? null;
 
     messages[0].content = `${systemPrompt}\n\nYou are ${petCfg.name}, replying inside #${channel.name}${
       channel.topic ? ` (${channel.topic})` : ""
