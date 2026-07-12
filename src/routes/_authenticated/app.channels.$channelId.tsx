@@ -10,6 +10,7 @@ import { invokePet } from "@/lib/pets.functions";
 import { useWorkspace } from "@/lib/workspace";
 import { usePetConfigs } from "@/lib/pet-configs";
 import { RunWidgetDialog } from "@/components/RunWidgetDialog";
+import { useChannelTasks, type Task } from "@/lib/tasks";
 
 type Message = {
   id: string;
