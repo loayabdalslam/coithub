@@ -182,6 +182,8 @@ function ChannelView() {
           onClose={() => setThreadParentId(null)}
         />
       )}
+
+      {tasksOpen && <ChannelTasksWidget channelId={channelId} onClose={() => setTasksOpen(false)} />}
     </div>
   );
 }
