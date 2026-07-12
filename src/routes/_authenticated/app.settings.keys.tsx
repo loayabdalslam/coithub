@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_authenticated/app/settings/keys")({
   component: KeysSettings,
 });
 
-const BYO_PROVIDERS: ProviderId[] = ["openrouter", "groq", "gemini", "chatgpt"];
+const BYO_PROVIDERS: ProviderId[] = ["google", "openai", "openrouter", "groq", "gemini", "chatgpt"];
 
 type KeyRow = { provider: string; masked: string; hasKey: boolean };
 
@@ -120,9 +120,9 @@ function KeysSettings() {
         </div>
         <h1 className="mt-2 font-display text-4xl">Bring your own AI providers</h1>
         <p className="mt-2 max-w-xl text-muted-foreground">
-          Google Gemini and OpenAI GPT are available out of the box via the Lovable AI Gateway. To
-          use OpenRouter, Groq, Google AI Studio, or your own OpenAI account, paste a key below.
-          Keys are scoped to this workspace and only admins can view or edit them.
+          Paste a key for any provider you want to use — Google Gemini, OpenAI, OpenRouter, Groq, or
+          Google AI Studio. Keys are saved once by an admin and shared across the whole workspace, so
+          everyone here can chat with the agents using them. Only admins can view or edit the keys.
         </p>
 
         <div className="mt-6 flex items-center justify-between rounded-lg border border-border bg-surface p-4">
