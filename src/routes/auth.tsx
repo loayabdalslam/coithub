@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { hasSupabaseConfig, supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { ProviderIcon } from "@/components/ProviderIcon";
 
 export const Route = createFileRoute("/auth")({
@@ -21,6 +20,10 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState<
+    "idle" | "checking" | "available" | "taken" | "invalid"
+  >("idle");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +34,7 @@ function AuthPage() {
       localStorage.removeItem("pending_invite");
       navigate({ to: "/invite/$token", params: { token: pending } });
     } else {
-      navigate({ to: "/app" });
+      navigate({ to: "/workspaces" });
     }
   }
 
@@ -43,6 +46,32 @@ function AuthPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cloudConfigured]);
 
+  // Debounced username availability check (signup only)
+  useEffect(() => {
+    if (mode !== "signup") return;
+    const clean = username.trim().toLowerCase();
+    if (!clean) {
+      setUsernameStatus("idle");
+      return;
+    }
+    if (!/^[a-z0-9_]{3,20}$/.test(clean)) {
+      setUsernameStatus("invalid");
+      return;
+    }
+    setUsernameStatus("checking");
+    const t = setTimeout(async () => {
+      const { data, error } = await (supabase.rpc as any)("is_username_available", {
+        _username: clean,
+      });
+      if (error) {
+        setUsernameStatus("idle");
+        return;
+      }
+      setUsernameStatus(data ? "available" : "taken");
+    }, 400);
+    return () => clearTimeout(t);
+  }, [username, mode]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!cloudConfigured) {
@@ -50,15 +79,29 @@ function AuthPage() {
       return;
     }
     setError(null);
+
+    if (mode === "signup") {
+      const clean = username.trim().toLowerCase();
+      if (!/^[a-z0-9_]{3,20}$/.test(clean)) {
+        setError("Username must be 3–20 characters: letters, numbers, or underscore.");
+        return;
+      }
+      if (usernameStatus === "taken") {
+        setError("That username is already taken. Please choose another.");
+        return;
+      }
+    }
+
     setBusy(true);
     try {
       if (mode === "signup") {
+        const clean = username.trim().toLowerCase();
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { full_name: name || email.split("@")[0] },
+            data: { full_name: name || clean, username: clean },
           },
         });
         if (error) throw error;
@@ -72,25 +115,6 @@ function AuthPage() {
     } finally {
       setBusy(false);
     }
-  }
-
-  async function google() {
-    if (!cloudConfigured) {
-      setError("Lovable Cloud is required for Google sign-in. Enable Cloud once workspace credits are available.");
-      return;
-    }
-    setError(null);
-    setBusy(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) {
-      setError(result.error.message ?? "Google sign-in failed");
-      setBusy(false);
-      return;
-    }
-    if (result.redirected) return;
-    afterAuth();
   }
 
   return (
@@ -121,32 +145,41 @@ function AuthPage() {
             </div>
           )}
 
-          <button
-            onClick={google}
-            disabled={busy}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-md border border-border-strong bg-surface px-4 py-2.5 text-sm font-medium hover:bg-accent/10 disabled:opacity-60"
-          >
-            <svg viewBox="0 0 24 24" className="size-4">
-              <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.4-1.7 4.2-5.5 4.2-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.9 1.5L18.4 5C16.9 3.6 14.7 2.7 12 2.7 6.9 2.7 2.7 6.9 2.7 12S6.9 21.3 12 21.3c6.9 0 9.3-4.9 9.3-9 0-.6-.1-1.1-.2-1.6H12z"/>
-            </svg>
-            Continue with Google
-          </button>
-
-          <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="h-px flex-1 bg-border" />
-            or
-            <span className="h-px flex-1 bg-border" />
-          </div>
-
-          <form onSubmit={submit} className="space-y-3">
+          <form onSubmit={submit} className="mt-6 space-y-3">
             {mode === "signup" && (
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              />
+              <>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your name"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                />
+                <div>
+                  <input
+                    type="text"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Username (unique)"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                  />
+                  {usernameStatus === "checking" && (
+                    <p className="mt-1 text-xs text-muted-foreground">Checking availability…</p>
+                  )}
+                  {usernameStatus === "available" && (
+                    <p className="mt-1 text-xs text-emerald-600">Username is available ✓</p>
+                  )}
+                  {usernameStatus === "taken" && (
+                    <p className="mt-1 text-xs text-destructive">Username is already taken</p>
+                  )}
+                  {usernameStatus === "invalid" && (
+                    <p className="mt-1 text-xs text-destructive">
+                      3–20 chars: letters, numbers, underscore
+                    </p>
+                  )}
+                </div>
+              </>
             )}
             <input
               type="email"
@@ -172,7 +205,7 @@ function AuthPage() {
             )}
             <button
               type="submit"
-              disabled={busy}
+              disabled={busy || (mode === "signup" && usernameStatus === "taken")}
               className="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
             >
               {busy ? "…" : mode === "signin" ? "Sign in" : "Create account"}

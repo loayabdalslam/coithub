@@ -20,21 +20,41 @@ export type WorkspaceInvite = {
   created_at: string;
 };
 
-// Ensure the user has at least one workspace; return the first one they belong to.
-export async function ensureWorkspace(): Promise<Workspace> {
+const SELECTED_KEY = "selected_workspace_id";
+
+export function getSelectedWorkspaceId(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(SELECTED_KEY);
+}
+
+export function setSelectedWorkspaceId(id: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(SELECTED_KEY, id);
+}
+
+export function clearSelectedWorkspaceId(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(SELECTED_KEY);
+}
+
+// List every workspace the current user is a member of.
+export async function listWorkspaces(): Promise<Workspace[]> {
+  const { data, error } = await supabase
+    .from("workspaces")
+    .select("id, name, slug, onboarded_at, auto_respond")
+    .order("name");
+  if (error) throw error;
+  return (data ?? []) as Workspace[];
+}
+
+// Create a brand-new workspace for the current user and select it.
+export async function createWorkspace(name?: string): Promise<Workspace> {
   const { data: userData } = await supabase.auth.getUser();
   const user = userData.user;
   if (!user) throw new Error("Not signed in");
 
-  const { data: existing, error: exErr } = await supabase
-    .from("workspaces")
-    .select("id, name, slug, onboarded_at, auto_respond")
-    .limit(1)
-    .maybeSingle();
-  if (exErr) throw exErr;
-  if (existing) return existing as Workspace;
-
   const displayName =
+    name?.trim() ||
     (user.user_metadata?.full_name as string | undefined) ||
     user.email?.split("@")[0] ||
     "My";
@@ -45,15 +65,21 @@ export async function ensureWorkspace(): Promise<Workspace> {
       .replace(/^-|-$/g, "")
       .slice(0, 30) || "workspace";
   const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`;
+  const wsName = name?.trim() ? name.trim() : `${displayName}'s Workspace`;
 
   const { data: created, error: createErr } = await supabase.rpc(
     "create_workspace_for_current_user",
-    { _name: `${displayName}'s Workspace`, _slug: slug },
+    { _name: wsName, _slug: slug },
   );
   if (createErr) throw createErr;
   const row = Array.isArray(created) ? created[0] : created;
   if (!row) throw new Error("Failed to create workspace");
-  return { ...(row as { id: string; name: string; slug: string }), onboarded_at: null };
+  const workspace = {
+    ...(row as { id: string; name: string; slug: string }),
+    onboarded_at: null,
+  } as Workspace;
+  setSelectedWorkspaceId(workspace.id);
+  return workspace;
 }
 
 export async function renameWorkspace(id: string, name: string): Promise<void> {
@@ -61,13 +87,34 @@ export async function renameWorkspace(id: string, name: string): Promise<void> {
   if (error) throw error;
 }
 
+export function useWorkspaces() {
+  return useQuery({
+    queryKey: ["workspaces"],
+    queryFn: listWorkspaces,
+    staleTime: 30_000,
+  });
+}
+
+// Returns the currently selected workspace, or null if none is selected /
+// the selection no longer belongs to the user.
 export function useWorkspace() {
   return useQuery({
     queryKey: ["workspace"],
-    queryFn: ensureWorkspace,
+    queryFn: async (): Promise<Workspace | null> => {
+      const id = getSelectedWorkspaceId();
+      if (!id) return null;
+      const { data, error } = await supabase
+        .from("workspaces")
+        .select("id, name, slug, onboarded_at, auto_respond")
+        .eq("id", id)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as Workspace | null) ?? null;
+    },
     staleTime: 60_000,
   });
 }
+
 
 export function useChannels(workspaceId: string | undefined) {
   return useQuery({
