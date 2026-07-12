@@ -320,6 +320,7 @@ function ThreadPanel({
         channelName={`${channelName} thread`}
         workspaceId={workspaceId}
         parentId={parentId}
+        threadPets={threadPets}
       />
     </aside>
   );
