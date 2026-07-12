@@ -103,10 +103,15 @@ export const invokePet = createServerFn({ method: "POST" })
 
     messages[0].content = `${systemPrompt}\n\nYou are ${petCfg.name}, replying inside #${channel.name}${
       channel.topic ? ` (${channel.topic})` : ""
-    }. Stay fully in character. Address people by name. Do NOT prefix your reply with your own name — the UI shows it. Format the reply in Markdown (headings, lists, tables, fenced code) so it renders cleanly. Keep replies focused and useful.`;
+    }. Stay fully in character. Address people by name. Do NOT prefix your reply with your own name — the UI shows it. Format the reply in Markdown (headings, lists, tables, fenced code) so it renders cleanly. Keep replies focused and useful.
 
-    const reply = await callProvider(provider, model, messages, workspaceKey);
-    if (!reply) throw new Error(`${petCfg.name} returned an empty reply.`);
+TASK CAPTURE: When the conversation implies a concrete, actionable task, decision to execute, or todo, capture it by appending a fenced code block with language "task" containing ONLY JSON, in addition to your normal reply. Shape: {"title": "short imperative title", "description": "1-2 sentence detail", "priority": "Low|Medium|High", "assignee": "<agent-slug or null>", "due_date": "YYYY-MM-DD or null"}. Emit one block per distinct task. Valid agent slugs: ${PET_LIST.join(", ")}. Only capture genuinely actionable items — never fabricate tasks for small talk. If there is nothing actionable, do not emit a task block.`;
+
+    const rawReply = await callProvider(provider, model, messages, workspaceKey);
+    if (!rawReply) throw new Error(`${petCfg.name} returned an empty reply.`);
+
+    const { cleaned, tasks: captured } = extractCapturedTasks(rawReply);
+    const reply = cleaned || rawReply;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: inserted, error: insErr } = await supabaseAdmin
@@ -116,5 +121,23 @@ export const invokePet = createServerFn({ method: "POST" })
       .single();
     if (insErr) throw new Error(insErr.message);
 
-    return { id: inserted.id, pet, body: reply };
+    // Persist any auto-captured tasks, tagged with their chat origin.
+    if (captured.length > 0) {
+      const rows = captured.map((t) => ({
+        workspace_id: workspaceId,
+        channel_id: channelId,
+        source_message_id: inserted.id,
+        title: t.title,
+        description: t.description,
+        priority: t.priority,
+        status: "Backlog",
+        assigned_to_agent:
+          t.assignee && PET_LIST.includes(t.assignee as PetSlug) ? t.assignee : pet,
+        due_date: t.due_date,
+        created_by: null,
+      }));
+      await supabaseAdmin.from("tasks" as never).insert(rows as never);
+    }
+
+    return { id: inserted.id, pet, body: reply, capturedTasks: captured.length };
   });
