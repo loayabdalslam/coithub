@@ -208,8 +208,11 @@ export const listWorkspaceTools = createServerFn({ method: "POST" })
           })),
         });
       } catch {
-        /* skip toolkits that fail to list */
+        // Listing failed, but the toolkit IS connected — keep it in the list so
+        // the UI doesn't ask the user to authorise it again.
+        groups.push({ toolkit: integ.toolkit, tools: [] });
       }
+
     }
     return { toolkits: groups };
   });
