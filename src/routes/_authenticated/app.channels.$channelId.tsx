@@ -396,17 +396,49 @@ function Composer({
     queryFn: async () => (await fetchTools({ data: { workspaceId } })).toolkits,
   });
 
+  // Usage counts are kept per workspace in localStorage so the palette can rank
+  // "top used" tools first, before falling back to the curated recommendations.
+  const usageKey = `co-tool-usage:${workspaceId}`;
+  function readUsage(): Record<string, number> {
+    if (typeof window === "undefined") return {};
+    try {
+      return JSON.parse(window.localStorage.getItem(usageKey) ?? "{}") as Record<string, number>;
+    } catch {
+      return {};
+    }
+  }
+  function bumpUsage(slug: string) {
+    if (typeof window === "undefined") return;
+    const u = readUsage();
+    u[slug] = (u[slug] ?? 0) + 1;
+    window.localStorage.setItem(usageKey, JSON.stringify(u));
+  }
+
+  const connectedToolkits = new Set((toolData ?? []).map((g) => g.toolkit));
   const paletteTools = (toolData ?? []).flatMap((g) =>
     g.tools.map((t) => ({ ...t, toolkit: g.toolkit })),
+  );
+  const usage = typeof window === "undefined" ? {} : readUsage();
+  const rankedTools = [...paletteTools].sort(
+    (a, b) => (usage[b.slug] ?? 0) - (usage[a.slug] ?? 0),
   );
   const toolMatches =
     toolQuery === null
       ? []
-      : paletteTools
-          .filter((t) =>
+      : (toolQuery.trim() === "" ? rankedTools : rankedTools.filter((t) =>
             `${t.toolkit} ${t.label} ${t.slug}`.toLowerCase().includes(toolQuery.toLowerCase()),
-          )
+          ))
           .slice(0, 40);
+
+  // Recommendations shown when a popular toolkit isn't connected yet: picking one
+  // starts the Composio authorisation flow and remembers the prompt to run after.
+  const recommended = RECOMMENDED_TOOLKITS.filter(
+    (r) => !connectedToolkits.has(r.slug),
+  ).filter((r) =>
+    toolQuery ? `${r.slug} ${r.label}`.toLowerCase().includes(toolQuery.toLowerCase()) : true,
+  );
+
+
 
 
   const mentionMatches =
