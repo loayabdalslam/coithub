@@ -1,0 +1,344 @@
+{
+  "version": 1,
+  "sdk_version": "0.25.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://gkyiievzkkopzuloqukt.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "coithub-mcp",
+      "version": "0.1.0",
+      "title": "Coithub"
+    },
+    "tools": [
+      {
+        "name": "list_workspaces",
+        "title": "List workspaces",
+        "description": "List the Coithub workspaces the signed-in user belongs to, with their channels.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_channel_messages",
+        "title": "Read channel messages",
+        "description": "Read the most recent messages in a Coithub channel, including replies from AI agents.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "channel_id": {
+              "type": "string",
+              "description": "The channel UUID (from list_workspaces)."
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "How many recent messages to return (1-100)."
+            }
+          },
+          "required": [
+            "channel_id",
+            "limit"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_tasks",
+        "title": "List tasks",
+        "description": "List tasks on the workspace board, optionally filtered by status (Backlog, In progress, Blocked, Done).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "workspace_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workspace UUID. Omit if you have only one."
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "Backlog",
+                    "In progress",
+                    "Blocked",
+                    "Done"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional status filter."
+            }
+          },
+          "required": [
+            "workspace_id",
+            "status"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_task",
+        "title": "Create task",
+        "description": "Create a task on the workspace board.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "workspace_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workspace UUID. Omit if you have only one."
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Short imperative task title."
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One or two sentences of detail."
+            },
+            "priority": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "Low",
+                    "Medium",
+                    "High"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Task priority."
+            },
+            "due_date": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Due date as YYYY-MM-DD."
+            },
+            "channel_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Channel to attach the task to."
+            }
+          },
+          "required": [
+            "workspace_id",
+            "title",
+            "description",
+            "priority",
+            "due_date",
+            "channel_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_task_status",
+        "title": "Update task status",
+        "description": "Move a task to a different column on the board.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "description": "Task UUID."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "Backlog",
+                "In progress",
+                "Blocked",
+                "Done"
+              ],
+              "description": "New status."
+            }
+          },
+          "required": [
+            "task_id",
+            "status"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_memories",
+        "title": "Read agent memory",
+        "description": "Read the shared memory the workspace AI agents use — facts about the people, the business, preferences and insights.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "workspace_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workspace UUID. Omit if you have only one."
+            }
+          },
+          "required": [
+            "workspace_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_memory",
+        "title": "Teach agent memory",
+        "description": "Store a durable fact in the workspace's shared agent memory so every agent uses it in future replies. Never store secrets or credentials.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "workspace_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Workspace UUID. Omit if you have only one."
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "user",
+                "workspace",
+                "business",
+                "preference",
+                "process",
+                "fact",
+                "insight"
+              ],
+              "description": "What sort of knowledge this is."
+            },
+            "subject": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Who or what it is about."
+            },
+            "content": {
+              "type": "string",
+              "minLength": 1,
+              "description": "One crisp sentence."
+            },
+            "importance": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "Importance from 1 (minor) to 5 (critical)."
+            }
+          },
+          "required": [
+            "workspace_id",
+            "kind",
+            "subject",
+            "content",
+            "importance"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
