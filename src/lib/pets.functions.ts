@@ -154,8 +154,8 @@ export const invokePet = createServerFn({ method: "POST" })
           composioKey = (ck as string | null) ?? null;
           if (composioKey) {
             const { listToolsAsOpenAI } = await import("./composio.server");
-            for (const integ of active.slice(0, 4)) {
-              const t = await listToolsAsOpenAI(composioKey, integ.toolkit, 10);
+            for (const integ of active.slice(0, pet === "co" ? 8 : 4)) {
+              const t = await listToolsAsOpenAI(composioKey, integ.toolkit, pet === "co" ? 20 : 10);
               for (const tool of t) {
                 toolkitByTool[tool.function.name] = integ.toolkit;
                 toolAccounts[tool.function.name] = integ.connected_account_id;
@@ -183,7 +183,9 @@ TASK CAPTURE: When the conversation implies a concrete, actionable task, decisio
         ? `\n\nTOOLS: You have live Composio tools connected to this workspace (${Array.from(
             new Set(Object.values(toolkitByTool)),
           ).join(", ")}). Use them to actually read data and take action instead of guessing, then summarise what you did. Never take a destructive or irreversible action without the user asking for it.`
-        : ""
+        : pet === "co"
+          ? `\n\nTOOLS: No Composio integration is active in this workspace yet, so you cannot call any tool right now. Tell the user an admin must add a Composio API key (https://platform.composio.dev/developers) and authorise the app in Settings → Integrations, then you can run it for them.`
+          : ""
     }`;
 
     const { text: rawReply, toolCalls } = await callProviderWithTools(
