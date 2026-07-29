@@ -44,10 +44,38 @@ export const connectToolkit = createServerFn({ method: "POST" })
           "No Composio API key for this workspace. An admin can add one in Settings → Integrations.",
       };
     }
-    const { createAuthConfig, initiateConnection } = await import("./composio.server");
+    const { createAuthConfig, initiateConnection, getConnection } = await import(
+      "./composio.server"
+    );
+
+    // Already authorised? Don't send the user through OAuth again.
+    const { data: existing } = await supabase
+      .from("workspace_integrations" as never)
+      .select("connected_account_id")
+      .eq("workspace_id", data.workspaceId)
+      .eq("toolkit", data.toolkit)
+      .maybeSingle();
+    const existingId = (existing as { connected_account_id?: string } | null)
+      ?.connected_account_id;
+    if (existingId) {
+      try {
+        const { status } = await getConnection(key, existingId);
+        if (status === "ACTIVE") {
+          await supabase
+            .from("workspace_integrations" as never)
+            .update({ status, updated_at: new Date().toISOString() } as never)
+            .eq("workspace_id", data.workspaceId)
+            .eq("toolkit", data.toolkit);
+          return { redirectUrl: null, status: "ACTIVE" as const, message: null };
+        }
+      } catch {
+        /* stale connection — fall through and re-authorise */
+      }
+    }
 
     const authConfigId = await createAuthConfig(key, data.toolkit);
     const conn = await initiateConnection(key, authConfigId, composioUserId(data.workspaceId));
+
 
     const { error } = await supabase.from("workspace_integrations" as never).upsert(
       {
@@ -180,8 +208,11 @@ export const listWorkspaceTools = createServerFn({ method: "POST" })
           })),
         });
       } catch {
-        /* skip toolkits that fail to list */
+        // Listing failed, but the toolkit IS connected — keep it in the list so
+        // the UI doesn't ask the user to authorise it again.
+        groups.push({ toolkit: integ.toolkit, tools: [] });
       }
+
     }
     return { toolkits: groups };
   });
