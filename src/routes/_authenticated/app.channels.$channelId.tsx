@@ -584,6 +584,7 @@ function Composer({
     setToolQuery(null);
     queryClient.invalidateQueries({ queryKey: ["messages", channelId] });
     setSending(false);
+    if (opts?.skipAgents) return;
 
     const mentioned = detectMentionedPets(text);
     const enabledPets = (configs ?? []).filter((c) => c.enabled).map((c) => c.pet_slug);
