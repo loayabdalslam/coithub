@@ -11,7 +11,8 @@ import { useWorkspace } from "@/lib/workspace";
 import { usePetConfigs } from "@/lib/pet-configs";
 import { RunWidgetDialog } from "@/components/RunWidgetDialog";
 import { useChannelTasks, type Task } from "@/lib/tasks";
-import { listWorkspaceTools } from "@/lib/composio.functions";
+import { listWorkspaceTools, connectToolkit, refreshIntegration } from "@/lib/composio.functions";
+import { RECOMMENDED_TOOLKITS, COMPOSIO_SIGNUP_URL } from "@/lib/composio-util";
 import { ToolkitIcon } from "@/lib/composio-icons";
 
 type Message = {
@@ -368,10 +369,14 @@ function Composer({
   const [mentionIndex, setMentionIndex] = useState(0);
   const [toolQuery, setToolQuery] = useState<string | null>(null);
   const [toolIndex, setToolIndex] = useState(0);
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ toolkit: string; prompt: string } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const invoke = useServerFn(invokePet);
   const fetchTools = useServerFn(listWorkspaceTools);
+  const startConnect = useServerFn(connectToolkit);
+  const checkConnect = useServerFn(refreshIntegration);
 
   // CO is the built-in Composio operator: always mentionable in every workspace.
   const hiredPets = Array.from(
