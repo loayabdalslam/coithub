@@ -7,12 +7,19 @@ export function composioUserId(workspaceId: string): string {
 
 type RpcClient = { rpc: (fn: never, args: never) => Promise<{ data: unknown }> };
 
-export async function composioKeyFor(supabase: RpcClient, workspaceId: string): Promise<string> {
+export async function composioKeyOrNull(
+  supabase: RpcClient,
+  workspaceId: string,
+): Promise<string | null> {
   const { data } = await supabase.rpc("get_workspace_api_key" as never, {
     _workspace_id: workspaceId,
     _provider: "composio",
   } as never);
-  const key = (data as string | null) ?? null;
+  return (data as string | null) ?? null;
+}
+
+export async function composioKeyFor(supabase: RpcClient, workspaceId: string): Promise<string> {
+  const key = await composioKeyOrNull(supabase, workspaceId);
   if (!key) {
     throw new Error(
       "No Composio API key for this workspace. An admin can add one in Settings → Integrations.",
