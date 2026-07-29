@@ -2,6 +2,14 @@ import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { ok, fail, unauthenticated, supabaseForUser } from "../supabase";
 
+type Ws = { id: string; name: string; slug: string };
+
+function pickWorkspace(value: unknown): Ws | null {
+  const v = value as Ws | Ws[] | null;
+  if (!v) return null;
+  return Array.isArray(v) ? (v[0] ?? null) : v;
+}
+
 export default defineTool({
   name: "list_workspaces",
   title: "List workspaces",
@@ -17,14 +25,14 @@ export default defineTool({
       .eq("user_id", ctx.getUserId()!);
     if (error) return fail(error.message);
     const ids = (memberships ?? [])
-      .map((m) => (m.workspaces as { id: string } | null)?.id)
+      .map((m) => pickWorkspace(m.workspaces)?.id)
       .filter(Boolean) as string[];
     const { data: channels } = ids.length
       ? await db.from("channels").select("id, name, topic, workspace_id").in("workspace_id", ids)
       : { data: [] };
     return ok(
       (memberships ?? []).map((m) => {
-        const w = m.workspaces as { id: string; name: string; slug: string } | null;
+        const w = pickWorkspace(m.workspaces);
         return {
           id: w?.id,
           name: w?.name,
