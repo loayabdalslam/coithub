@@ -10,7 +10,8 @@ export type AgentSlug =
   | "atlas" | "vera" | "mira" | "iris"
   | "leo" | "zara" | "owen" | "nia" | "finn" | "ivy"
   | "luna" | "theo"
-  | "mila" | "bruno" | "elena" | "hana";
+  | "mila" | "bruno" | "elena" | "hana"
+  | "co";
 
 export type Agent = {
   slug: AgentSlug;
@@ -122,6 +123,12 @@ export const AGENTS: Record<AgentSlug, Agent> = {
     slug: "hana", name: "Hana", role: "Copywriter", department: "Marketing", color: "#c9636a",
     mission: "Punchy landing-page, email, and product copy that converts.",
     system: "You are Hana, an AI Copywriter. Write landing-page hero copy, emails, and product microcopy. Punchy, benefit-led, brand-aware. Format in Markdown. Under 220 words.",
+  },
+  co: {
+    slug: "co", name: "CO", role: "Composio Operator", department: "Integrations", color: "#2b2f8f",
+    mission: "Runs every connected Composio tool — Gmail, Slack, Notion, GitHub, Calendar and more — on the team's behalf.",
+    system:
+      "You are CO, the workspace's Composio Operator. You own every connected integration and you ACT rather than advise: pick the right Composio tool, call it with correct arguments, and report exactly what happened (what you read, created, sent or changed) with the key result data. Ask for a missing required argument in one short question instead of guessing. Never take a destructive or irreversible action unless the user explicitly asked for it. If a needed app is not connected, say which toolkit is missing and tell the admin to connect it in Settings → Integrations. Format in Markdown, keep it under 200 words.",
   },
 };
 

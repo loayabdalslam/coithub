@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
+import { ToolkitIcon } from "@/lib/composio-icons";
+import { PetAvatar } from "@/components/PetAvatar";
 import {
   searchToolkits,
   connectToolkit,
@@ -165,12 +167,34 @@ function IntegrationsSettings() {
           Connect once as an admin and every agent in this workspace can read and act through them.
         </p>
 
+        <div className="mt-6 flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4">
+          <PetAvatar petId="co" size="lg" />
+          <div className="min-w-0">
+            <div className="font-display text-base">Meet CO — your Composio operator</div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Type <code className="rounded bg-secondary px-1">@co</code> in any channel to have CO
+              run a connected tool for you, or press{" "}
+              <code className="rounded bg-secondary px-1">!</code> in the composer to browse every
+              available tool with a ready-made example prompt.
+            </p>
+          </div>
+        </div>
+
         <div className="mt-6 rounded-lg border border-border bg-surface p-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="font-display text-base">Composio API key</div>
               <div className="text-xs text-muted-foreground">
-                Shared across the workspace. Get one at app.composio.dev → Developers.
+                Shared across the workspace.{" "}
+                <a
+                  href="https://platform.composio.dev/developers"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="text-primary underline"
+                >
+                  Register / copy your API key
+                </a>{" "}
+                on Composio, paste it here, then authorise each app below.
               </div>
             </div>
             {hasKey && (
@@ -210,10 +234,15 @@ function IntegrationsSettings() {
                   key={i.toolkit}
                   className="flex items-center justify-between rounded-lg border border-border bg-surface p-3"
                 >
-                  <div>
+                  <div className="flex items-center gap-3">
+                    <ToolkitIcon slug={i.toolkit} size={28} />
+                    <div>
                     <div className="text-sm font-medium capitalize">{i.toolkit.replace(/_/g, " ")}</div>
                     <div className="text-xs text-muted-foreground">
-                      {i.status === "ACTIVE" ? "Active — agents can use it" : `Status: ${i.status}`}
+                      {i.status === "ACTIVE"
+                        ? "Active — @co and every agent can use it"
+                        : `Awaiting permission on Composio (${i.status}) — reconnect, approve access, then Refresh`}
+                    </div>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -274,11 +303,7 @@ function IntegrationsSettings() {
               return (
                 <div key={t.slug} className="rounded-lg border border-border bg-surface p-3">
                   <div className="flex items-start gap-3">
-                    {t.logo ? (
-                      <img src={t.logo} alt={`${t.name} logo`} className="mt-0.5 size-6 rounded" />
-                    ) : (
-                      <div className="mt-0.5 size-6 rounded bg-secondary" />
-                    )}
+                    <ToolkitIcon slug={t.slug} logo={t.logo} size={26} className="mt-0.5" />
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-medium">{t.name}</div>
                       <div className="line-clamp-2 text-xs text-muted-foreground">{t.description}</div>

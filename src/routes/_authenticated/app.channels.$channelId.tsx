@@ -11,6 +11,8 @@ import { useWorkspace } from "@/lib/workspace";
 import { usePetConfigs } from "@/lib/pet-configs";
 import { RunWidgetDialog } from "@/components/RunWidgetDialog";
 import { useChannelTasks, type Task } from "@/lib/tasks";
+import { listWorkspaceTools } from "@/lib/composio.functions";
+import { ToolkitIcon } from "@/lib/composio-icons";
 
 type Message = {
   id: string;
@@ -364,14 +366,43 @@ function Composer({
   const [widgetOpen, setWidgetOpen] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
+  const [toolQuery, setToolQuery] = useState<string | null>(null);
+  const [toolIndex, setToolIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const invoke = useServerFn(invokePet);
+  const fetchTools = useServerFn(listWorkspaceTools);
 
-  const hiredPets = (configs ?? [])
-    .filter((c) => c.enabled)
-    .map((c) => c.pet_slug as PetSlug)
-    .filter((slug) => PET_LIST.includes(slug));
+  // CO is the built-in Composio operator: always mentionable in every workspace.
+  const hiredPets = Array.from(
+    new Set<PetSlug>([
+      "co" as PetSlug,
+      ...(configs ?? [])
+        .filter((c) => c.enabled)
+        .map((c) => c.pet_slug as PetSlug)
+        .filter((slug) => PET_LIST.includes(slug)),
+    ]),
+  );
+
+  const { data: toolData } = useQuery({
+    queryKey: ["composio-palette", workspaceId],
+    enabled: !!workspaceId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => (await fetchTools({ data: { workspaceId } })).toolkits,
+  });
+
+  const paletteTools = (toolData ?? []).flatMap((g) =>
+    g.tools.map((t) => ({ ...t, toolkit: g.toolkit })),
+  );
+  const toolMatches =
+    toolQuery === null
+      ? []
+      : paletteTools
+          .filter((t) =>
+            `${t.toolkit} ${t.label} ${t.slug}`.toLowerCase().includes(toolQuery.toLowerCase()),
+          )
+          .slice(0, 40);
+
 
   const mentionMatches =
     mentionQuery === null
@@ -392,6 +423,27 @@ function Composer({
     } else {
       setMentionQuery(null);
     }
+    const bang = before.match(/(?:^|\s)!([\w ]*)$/);
+    if (bang && !match) {
+      setToolQuery(bang[1]);
+      setToolIndex(0);
+    } else {
+      setToolQuery(null);
+    }
+  }
+
+  function insertToolPrompt(example: string) {
+    const el = textareaRef.current;
+    const caret = el?.selectionStart ?? body.length;
+    const before = body.slice(0, caret);
+    const after = body.slice(caret);
+    const newBefore = before.replace(/(^|\s)!([\w ]*)$/, `$1${example}`);
+    setBody(newBefore + after);
+    setToolQuery(null);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(newBefore.length, newBefore.length);
+    });
   }
 
   function insertMention(slug: PetSlug) {
@@ -442,6 +494,7 @@ function Composer({
     }
     setBody("");
     setMentionQuery(null);
+    setToolQuery(null);
     queryClient.invalidateQueries({ queryKey: ["messages", channelId] });
     setSending(false);
 
@@ -490,6 +543,51 @@ function Composer({
   return (
     <div className="shrink-0 border-t border-border bg-background p-4">
       <form onSubmit={send} className="surface-panel relative flex items-end gap-3 p-3">
+        {toolQuery !== null && (
+          <div className="absolute bottom-full left-0 mb-2 w-96 overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
+            <div className="flex items-center justify-between border-b border-border px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+              <span>Import a tool · CO runs it</span>
+              <span>{paletteTools.length} available</span>
+            </div>
+            {toolMatches.length > 0 ? (
+              <ul className="max-h-72 overflow-auto py-1">
+                {toolMatches.map((t, i) => (
+                  <li key={t.slug}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        insertToolPrompt(t.example);
+                      }}
+                      onMouseEnter={() => setToolIndex(i)}
+                      className={`flex w-full items-start gap-2 px-3 py-2 text-left ${
+                        i === toolIndex ? "bg-secondary" : "hover:bg-secondary"
+                      }`}
+                    >
+                      <ToolkitIcon slug={t.toolkit} size={22} className="mt-0.5" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium">{t.label}</span>
+                        <span className="block truncate text-[11px] text-muted-foreground">
+                          {t.toolkit} · {t.description || t.slug}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11px] text-primary">
+                          {t.example}…
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="px-3 py-3 text-xs text-muted-foreground">
+                {paletteTools.length === 0
+                  ? "No Composio tools connected yet. An admin can add the Composio API key and authorise apps in Settings → Integrations."
+                  : "No tool matches that."}
+              </div>
+            )}
+          </div>
+        )}
+
         {mentionQuery !== null && (
           <div className="absolute bottom-full left-0 mb-2 w-72 overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
             <div className="border-b border-border px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -534,6 +632,28 @@ function Composer({
           value={body}
           onChange={(e) => handleBodyChange(e.target.value, e.target.selectionStart)}
           onKeyDown={(e) => {
+            if (toolQuery !== null && toolMatches.length > 0) {
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setToolIndex((i) => (i + 1) % toolMatches.length);
+                return;
+              }
+              if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setToolIndex((i) => (i - 1 + toolMatches.length) % toolMatches.length);
+                return;
+              }
+              if (e.key === "Enter" || e.key === "Tab") {
+                e.preventDefault();
+                insertToolPrompt(toolMatches[toolIndex].example);
+                return;
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setToolQuery(null);
+                return;
+              }
+            }
             if (mentionQuery !== null && mentionMatches.length > 0) {
               if (e.key === "ArrowDown") {
                 e.preventDefault();
@@ -562,7 +682,7 @@ function Composer({
             }
           }}
           className="max-h-40 min-h-[60px] flex-1 resize-none bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none"
-          placeholder={parentId ? "Reply in thread…" : `Message #${channelName}`}
+          placeholder={parentId ? "Reply in thread…  (@ agents · ! tools)" : `Message #${channelName}   —  @ to mention, ! to import a tool`}
         />
 
         <button
