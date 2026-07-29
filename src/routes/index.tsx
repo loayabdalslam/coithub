@@ -57,7 +57,9 @@ function Header() {
         <span className="font-display text-xl">Coithub</span>
       </Link>
       <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
-        <a href="#hub" className="hover:text-foreground">Agent Hub</a>
+        <a href="#agents" className="hover:text-foreground">Agents</a>
+        <a href="#tools" className="hover:text-foreground">Tools</a>
+
         <a href="#workflow" className="hover:text-foreground">Workflow</a>
         <a href="#onboarding" className="hover:text-foreground">Onboarding</a>
       </nav>
@@ -94,11 +96,13 @@ function Hero() {
           </p>
           <div className="mt-10 flex flex-wrap gap-3">
             <Link to="/auth" className="btn-pill">Get started</Link>
-            <a href="#hub" className="btn-outline-pill">Meet the team</a>
+            <a href="#agents" className="btn-outline-pill">Meet the team</a>
           </div>
         </div>
 
+        <Hero3DStage />
         <LiveChatCard />
+
       </div>
     </section>
   );
