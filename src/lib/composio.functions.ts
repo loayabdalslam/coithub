@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 // Composio connections are workspace-scoped: the Composio "user" is the
 // workspace id, so every member (and every agent) shares the same tools.
-import { composioKeyFor as keyFor, composioUserId } from "./composio-util";
+import { composioKeyFor as keyFor, composioUserId, humanizeTool, examplePrompt } from "./composio-util";
 
 export const searchToolkits = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -172,16 +172,3 @@ export type ToolPaletteGroup = {
   toolkit: string;
   tools: { slug: string; label: string; description: string; example: string }[];
 };
-
-function humanizeTool(slug: string, toolkit: string): string {
-  const parts = slug.split("_");
-  if (parts[0]?.toLowerCase() === toolkit.replace(/_/g, "").toLowerCase()) parts.shift();
-  const words = parts.join(" ").toLowerCase();
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
-
-function examplePrompt(slug: string, toolkit: string): string {
-  const action = humanizeTool(slug, toolkit).toLowerCase();
-  const app = toolkit.replace(/_/g, " ");
-  return `@co ${action} in ${app} — `;
-}

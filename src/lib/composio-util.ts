@@ -20,3 +20,16 @@ export async function composioKeyFor(supabase: RpcClient, workspaceId: string): 
   }
   return key;
 }
+
+export function humanizeTool(slug: string, toolkit: string): string {
+  const parts = slug.split("_");
+  if (parts[0]?.toLowerCase() === toolkit.replace(/_/g, "").toLowerCase()) parts.shift();
+  const words = parts.join(" ").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+export function examplePrompt(slug: string, toolkit: string): string {
+  const action = humanizeTool(slug, toolkit).toLowerCase();
+  const app = toolkit.replace(/_/g, " ");
+  return `@co ${action} in ${app} — `;
+}
