@@ -159,7 +159,7 @@ function ToolRow({ items, reverse }: { items: string[]; reverse?: boolean }) {
 /* ----------------------------------------------------------- agent slider */
 
 export function AgentsCarousel() {
-  const slugs: AgentSlug[] = AGENT_LIST.map((a) => (typeof a === "string" ? a : a.slug));
+  const slugs: AgentSlug[] = AGENT_LIST;
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
