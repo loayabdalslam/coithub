@@ -2,7 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 // Composio connections are workspace-scoped: the Composio "user" is the
 // workspace id, so every member (and every agent) shares the same tools.
-import { composioKeyFor as keyFor, composioUserId, humanizeTool, examplePrompt } from "./composio-util";
+import {
+  composioKeyOrNull,
+  composioUserId,
+  humanizeTool,
+  examplePrompt,
+  COMPOSIO_SIGNUP_URL,
+} from "./composio-util";
 
 export const searchToolkits = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -11,9 +17,10 @@ export const searchToolkits = createServerFn({ method: "POST" })
     return i;
   })
   .handler(async ({ data, context }) => {
-    const key = await keyFor(context.supabase as never, data.workspaceId);
+    const key = await composioKeyOrNull(context.supabase as never, data.workspaceId);
+    if (!key) return { toolkits: [], needsKey: true as const };
     const { listToolkits } = await import("./composio.server");
-    return { toolkits: await listToolkits(key, data.search) };
+    return { toolkits: await listToolkits(key, data.search), needsKey: false as const };
   });
 
 export const connectToolkit = createServerFn({ method: "POST" })
@@ -26,7 +33,16 @@ export const connectToolkit = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const key = await keyFor(supabase as never, data.workspaceId);
+    const key = await composioKeyOrNull(supabase as never, data.workspaceId);
+    if (!key) {
+      // No workspace key yet — don't throw (that blanks the app); tell the UI.
+      return {
+        redirectUrl: COMPOSIO_SIGNUP_URL,
+        status: "NO_KEY" as const,
+        message:
+          "No Composio API key for this workspace. An admin can add one in Settings → Integrations.",
+      };
+    }
     const { createAuthConfig, initiateConnection } = await import("./composio.server");
 
     const authConfigId = await createAuthConfig(key, data.toolkit);
@@ -47,8 +63,9 @@ export const connectToolkit = createServerFn({ method: "POST" })
     );
     if (error) throw new Error(error.message);
 
-    return { redirectUrl: conn.redirectUrl, status: conn.status };
+    return { redirectUrl: conn.redirectUrl, status: conn.status, message: null };
   });
+
 
 export const refreshIntegration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
