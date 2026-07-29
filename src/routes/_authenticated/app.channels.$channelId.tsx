@@ -548,7 +548,11 @@ function Composer({
 
   async function send(e: FormEvent) {
     e.preventDefault();
-    const text = body.trim();
+    await sendText(body);
+  }
+
+  async function sendText(raw: string, opts?: { skipAgents?: boolean }) {
+    const text = raw.trim();
     if (!text || sending) return;
     setSending(true);
     setErr(null);
