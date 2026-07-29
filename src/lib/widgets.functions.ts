@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AGENTS, AGENT_LIST, type AgentSlug } from "./agents";
-import { providerForModel } from "./providers";
+import { providerForModel, DEFAULT_MODEL } from "./providers";
 import { callProvider } from "./provider-call";
 
 type RunInput = {
@@ -76,7 +76,7 @@ export const runAgentWidget = createServerFn({ method: "POST" })
       const agent = AGENTS[agentSlug];
       const system =
         (cfg?.custom_system as string | null | undefined) || agent.system;
-      const model = (cfg?.model as string | undefined) || "google/gemini-3-flash-preview";
+      const model = (cfg?.model as string | undefined) || DEFAULT_MODEL;
       const provider = providerForModel(model);
 
       // Fetch the workspace API key for the selected provider.
