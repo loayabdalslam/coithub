@@ -469,7 +469,8 @@ function Composer({
     }
   }
 
-  function insertToolPrompt(example: string) {
+  function insertToolPrompt(example: string, slug?: string) {
+    if (slug) bumpUsage(slug);
     const el = textareaRef.current;
     const caret = el?.selectionStart ?? body.length;
     const before = body.slice(0, caret);
@@ -482,6 +483,51 @@ function Composer({
       el?.setSelectionRange(newBefore.length, newBefore.length);
     });
   }
+
+  /**
+   * A recommended toolkit isn't authorised yet: kick off the Composio OAuth
+   * flow, drop the permission link into the channel, then poll the connection
+   * and auto-run the requested prompt once access is granted.
+   */
+  async function requestAccess(toolkit: string, label: string, prompt: string) {
+    setConnecting(toolkit);
+    setErr(null);
+    setToolQuery(null);
+    try {
+      const { redirectUrl, status } = await startConnect({ data: { workspaceId, toolkit } });
+      if (status === "ACTIVE") {
+        await sendText(prompt);
+        return;
+      }
+      setPending({ toolkit, prompt });
+      await sendText(
+        `🔐 **${label} access needed** — authorise Composio here: ${redirectUrl ?? COMPOSIO_SIGNUP_URL}\n\nOnce you approve it, I'll automatically run: _${prompt}_`,
+        { skipAgents: true },
+      );
+      // Poll the Composio connection until the user finishes the grant.
+      for (let i = 0; i < 75; i++) {
+        await new Promise((r) => setTimeout(r, 4000));
+        const res = await checkConnect({ data: { workspaceId, toolkit } });
+        if (res.status === "ACTIVE") {
+          setPending(null);
+          queryClient.invalidateQueries({ queryKey: ["composio-palette", workspaceId] });
+          await sendText(`✅ ${label} connected. Running your request now.`, { skipAgents: true });
+          await sendText(prompt);
+          return;
+        }
+      }
+      setErr(`Still waiting for ${label} access. Re-run the tool once you've approved it.`);
+    } catch (e) {
+      setErr(
+        e instanceof Error
+          ? `${e.message} — register a Composio API key at ${COMPOSIO_SIGNUP_URL}`
+          : String(e),
+      );
+    } finally {
+      setConnecting(null);
+    }
+  }
+
 
   function insertMention(slug: PetSlug) {
     const el = textareaRef.current;
