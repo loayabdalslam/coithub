@@ -4,6 +4,11 @@ import { hasSupabaseConfig, supabase } from "@/integrations/supabase/client";
 import { ProviderIcon } from "@/components/ProviderIcon";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//")
+      ? s.next
+      : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Sign in — Coithub" },
@@ -16,6 +21,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const cloudConfigured = hasSupabaseConfig();
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,6 +35,11 @@ function AuthPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   function afterAuth() {
+    // Return to wherever the user was headed (e.g. the OAuth consent screen).
+    if (next) {
+      window.location.href = next;
+      return;
+    }
     const pending =
       typeof window !== "undefined" ? localStorage.getItem("pending_invite") : null;
     if (pending) {
@@ -101,7 +112,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: next ? `${window.location.origin}${next}` : window.location.origin,
             data: { full_name: name || clean, username: clean },
           },
         });
