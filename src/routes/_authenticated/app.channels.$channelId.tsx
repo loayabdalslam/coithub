@@ -637,49 +637,111 @@ function Composer({
     <div className="shrink-0 border-t border-border bg-background p-4">
       <form onSubmit={send} className="surface-panel relative flex items-end gap-3 p-3">
         {toolQuery !== null && (
-          <div className="absolute bottom-full left-0 mb-2 w-96 overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
+          <div className="absolute bottom-full left-0 mb-2 w-[26rem] overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
             <div className="flex items-center justify-between border-b border-border px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-              <span>Import a tool · CO runs it</span>
-              <span>{paletteTools.length} available</span>
+              <span>{toolQuery.trim() === "" ? "Recommended tools · CO runs them" : "Import a tool · CO runs it"}</span>
+              <span>{paletteTools.length} connected</span>
             </div>
-            {toolMatches.length > 0 ? (
-              <ul className="max-h-72 overflow-auto py-1">
-                {toolMatches.map((t, i) => (
-                  <li key={t.slug}>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        insertToolPrompt(t.example);
-                      }}
-                      onMouseEnter={() => setToolIndex(i)}
-                      className={`flex w-full items-start gap-2 px-3 py-2 text-left ${
-                        i === toolIndex ? "bg-secondary" : "hover:bg-secondary"
-                      }`}
-                    >
-                      <ToolkitIcon slug={t.toolkit} size={22} className="mt-0.5" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium">{t.label}</span>
-                        <span className="block truncate text-[11px] text-muted-foreground">
-                          {t.toolkit} · {t.description || t.slug}
-                        </span>
-                        <span className="mt-0.5 block truncate text-[11px] text-primary">
-                          {t.example}…
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="px-3 py-3 text-xs text-muted-foreground">
-                {paletteTools.length === 0
-                  ? "No Composio tools connected yet. An admin can add the Composio API key and authorise apps in Settings → Integrations."
-                  : "No tool matches that."}
+            <div className="max-h-80 overflow-auto py-1">
+              {toolMatches.length > 0 && (
+                <ul>
+                  {toolMatches.map((t, i) => (
+                    <li key={t.slug}>
+                      <div
+                        className={`flex w-full items-start gap-2 px-3 py-2 text-left ${
+                          i === toolIndex ? "bg-secondary" : "hover:bg-secondary"
+                        }`}
+                        onMouseEnter={() => setToolIndex(i)}
+                      >
+                        <ToolkitIcon slug={t.toolkit} size={22} className="mt-0.5" />
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            insertToolPrompt(t.example, t.slug);
+                          }}
+                          className="min-w-0 flex-1 text-left"
+                        >
+                          <span className="block text-sm font-medium">
+                            {t.label}
+                            {(usage[t.slug] ?? 0) > 0 && (
+                              <span className="ml-1 text-[10px] text-muted-foreground">
+                                · used {usage[t.slug]}×
+                              </span>
+                            )}
+                          </span>
+                          <span className="block truncate text-[11px] text-muted-foreground">
+                            {t.toolkit} · {t.description || t.slug}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[11px] text-primary">
+                            {t.example}…
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            bumpUsage(t.slug);
+                            setToolQuery(null);
+                            setBody("");
+                            void sendText(t.example);
+                          }}
+                          className="mt-0.5 shrink-0 rounded-md border border-border px-2 py-1 text-[11px] hover:bg-background"
+                        >
+                          Send
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {recommended.length > 0 && (
+                <>
+                  <div className="border-t border-border px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Popular · needs access
+                  </div>
+                  <ul>
+                    {recommended.map((r) => (
+                      <li key={r.slug}>
+                        <button
+                          type="button"
+                          disabled={connecting !== null}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            void requestAccess(r.slug, r.label, r.prompts[0]);
+                          }}
+                          className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-secondary disabled:opacity-50"
+                        >
+                          <ToolkitIcon slug={r.slug} size={22} className="mt-0.5" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium">{r.label}</span>
+                            <span className="block truncate text-[11px] text-primary">
+                              {r.prompts[0]}…
+                            </span>
+                          </span>
+                          <span className="mt-0.5 shrink-0 text-[11px] text-muted-foreground">
+                            {connecting === r.slug ? "connecting…" : "grant access"}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {toolMatches.length === 0 && recommended.length === 0 && (
+                <div className="px-3 py-3 text-xs text-muted-foreground">No tool matches that.</div>
+              )}
+            </div>
+            {pending && (
+              <div className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
+                Waiting for {pending.toolkit} access — your request runs automatically once approved.
               </div>
             )}
           </div>
         )}
+
 
         {mentionQuery !== null && (
           <div className="absolute bottom-full left-0 mb-2 w-72 overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
