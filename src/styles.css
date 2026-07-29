@@ -348,7 +348,7 @@
   background: #ffffff; color: var(--color-ink);
   transition: transform .2s ease, background-color .2s ease;
 }
-@utility carousel-btn { }
+
 @utility edge-fade {
   background: linear-gradient(90deg, var(--color-background) 0%, transparent 8%, transparent 92%, var(--color-background) 100%);
 }
