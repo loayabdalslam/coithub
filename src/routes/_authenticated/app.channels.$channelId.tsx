@@ -587,7 +587,9 @@ function Composer({
     if (opts?.skipAgents) return;
 
     const mentioned = detectMentionedPets(text);
-    const enabledPets = (configs ?? []).filter((c) => c.enabled).map((c) => c.pet_slug);
+    const enabledPets = Array.from(
+      new Set<string>(["co", ...(configs ?? []).filter((c) => c.enabled).map((c) => c.pet_slug)]),
+    );
     // Priority: explicit @mentions. Inside a thread with no mention, reply with
     // the agents already participating in that thread so conversations continue.
     // Otherwise fall back to auto-respond (all hired agents).
