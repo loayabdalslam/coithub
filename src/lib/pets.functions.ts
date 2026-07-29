@@ -233,5 +233,34 @@ TASK CAPTURE: When the conversation implies a concrete, actionable task, decisio
       await supabaseAdmin.from("tasks" as never).insert(rows as never);
     }
 
-    return { id: inserted.id, pet, body: reply, capturedTasks: captured.length };
+
+    // Persist anything the agent learned into the shared workspace memory.
+    const VALID_KINDS = ["user", "workspace", "business", "preference", "process", "fact", "insight"];
+    if (capturedMemories.length > 0) {
+      const memRowsToAdd = capturedMemories.map((m) => ({
+        workspace_id: workspaceId,
+        kind: VALID_KINDS.includes(m.kind) ? m.kind : "fact",
+        subject: m.subject,
+        content: m.content,
+        importance: m.importance,
+        source_channel_id: channelId,
+        source_message_id: inserted.id,
+        created_by_agent: pet,
+        created_by: null,
+      }));
+      // Ignore duplicates — the dedupe index keeps memory clean.
+      for (const row of memRowsToAdd) {
+        await supabaseAdmin.from("workspace_memories" as never).insert(row as never);
+      }
+    }
+
+    return {
+      id: inserted.id,
+      pet,
+      body: reply,
+      capturedTasks: captured.length,
+      capturedMemories: capturedMemories.length,
+      toolCalls: toolCalls.length,
+    };
   });
+
