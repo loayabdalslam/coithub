@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { AGENTS, AGENT_LIST, type AgentSlug } from "@/lib/agents";
 import { PetAvatar } from "@/components/PetAvatar";
-import { toolkitMark } from "@/lib/composio-icons";
+import { ToolkitIcon } from "@/lib/composio-icons";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import hero3d from "@/assets/landing/hero-3d.jpg";
 import panels3d from "@/assets/landing/panels-3d.jpg";
