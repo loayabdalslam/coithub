@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { AGENTS, AGENT_LIST, type AgentSlug } from "@/lib/agents";
 import { PetAvatar } from "@/components/PetAvatar";
-import { toolkitMark } from "@/lib/composio-icons";
+import { ToolkitIcon } from "@/lib/composio-icons";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import hero3d from "@/assets/landing/hero-3d.jpg";
 import panels3d from "@/assets/landing/panels-3d.jpg";
@@ -134,23 +134,16 @@ function ToolRow({ items, reverse }: { items: string[]; reverse?: boolean }) {
         className="flex w-max gap-3 animate-drift-fast"
         style={{ animationDirection: reverse ? "reverse" : "normal" }}
       >
-        {doubled.map((slug, i) => {
-          const { Icon, color } = toolkitMark(slug);
-          return (
-            <div
-              key={`${slug}-${i}`}
-              className="surface-panel flex shrink-0 items-center gap-2.5 px-4 py-3 transition-transform duration-300 hover:-translate-y-1"
-            >
-              <span
-                className="flex size-8 items-center justify-center rounded-lg"
-                style={{ backgroundColor: `${color}1a` }}
-              >
-                <Icon className="size-4" style={{ color }} />
-              </span>
-              <span className="whitespace-nowrap text-sm text-ink">{label(slug)}</span>
-            </div>
-          );
-        })}
+        {doubled.map((slug, i) => (
+          <div
+            key={`${slug}-${i}`}
+            className="surface-panel flex shrink-0 items-center gap-2.5 px-4 py-3 transition-transform duration-300 hover:-translate-y-1"
+          >
+            <ToolkitIcon slug={slug} size={32} className="rounded-lg" />
+            <span className="whitespace-nowrap text-sm text-ink">{label(slug)}</span>
+          </div>
+        ))}
+
       </div>
     </div>
   );
