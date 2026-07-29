@@ -1,8 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PET_PROMPTS, PET_LIST, type PetSlug } from "./pets";
-import { providerForModel } from "./providers";
-import { callProvider, extractCapturedTasks, type ChatMsg } from "./provider-call";
+import { providerForModel, DEFAULT_MODEL } from "./providers";
+import {
+  extractCapturedTasks,
+  extractCapturedMemories,
+  callProviderWithTools,
+  supportsToolCalling,
+  type ChatMsg,
+  type ToolSpec,
+} from "./provider-call";
 
 type InvokeInput = {
   channelId: string;
