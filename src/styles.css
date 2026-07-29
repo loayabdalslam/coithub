@@ -330,3 +330,25 @@
   display: inline-block; width: 6px; height: 6px; border-radius: 9999px;
   background: var(--color-ink); margin: 0 2px; animation: blink 1.2s infinite both;
 }
+
+/* 3D showcase */
+@keyframes drift-fast {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@utility animate-drift-fast { animation: drift-fast 55s linear infinite; }
+@utility stage-3d {
+  perspective: 1400px;
+  transform-style: preserve-3d;
+}
+@utility carousel-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 9999px;
+  border: 1px solid var(--color-hairline-strong);
+  background: #ffffff; color: var(--color-ink);
+  transition: transform .2s ease, background-color .2s ease;
+}
+@utility carousel-btn { }
+@utility edge-fade {
+  background: linear-gradient(90deg, var(--color-background) 0%, transparent 8%, transparent 92%, var(--color-background) 100%);
+}
