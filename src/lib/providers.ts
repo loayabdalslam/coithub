@@ -103,7 +103,9 @@ export const MODELS: ModelOption[] = [
   { id: "chatgpt/gpt-4o", label: "GPT-4o (direct)", provider: "chatgpt", tag: "smart", description: "Direct OpenAI key." },
 ];
 
-export const DEFAULT_MODEL = "google/gemini-3-flash-preview";
+// Groq is the default: fast, tool-calling capable, and the key we ask for
+// during onboarding.
+export const DEFAULT_MODEL = "groq/llama-3.3-70b-versatile";
 
 export function providerForModel(modelId: string): ProviderId {
   const head = modelId.split("/")[0] as ProviderId;

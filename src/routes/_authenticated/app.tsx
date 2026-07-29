@@ -148,6 +148,12 @@ function TopBar({ workspaceName, workspaceId }: { workspaceName: string; workspa
           API keys
         </Link>
         <Link
+          to="/app/settings/integrations"
+          className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
+        >
+          Integrations
+        </Link>
+        <Link
           to="/app/settings/pets"
           className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground"
         >
@@ -241,12 +247,20 @@ function InviteDialog({ workspaceId, onClose }: { workspaceId: string; onClose: 
 const NAV: {
   label: string;
   icon: string;
-  to?: "/app/threads" | "/app/mentions" | "/app/tasks" | "/app/pets" | "/app/dashboard" | "/app/decisions";
+  to?:
+    | "/app/threads"
+    | "/app/mentions"
+    | "/app/tasks"
+    | "/app/pets"
+    | "/app/dashboard"
+    | "/app/decisions"
+    | "/app/memory";
 }[] = [
   { label: "Threads", to: "/app/threads", icon: "💬" },
   { label: "Mentions", to: "/app/mentions", icon: "@" },
   { label: "Tasks", to: "/app/tasks", icon: "◇" },
   { label: "Agents", to: "/app/pets", icon: "◈" },
+  { label: "Memory", to: "/app/memory", icon: "🧠" },
   { label: "Dashboard", to: "/app/dashboard", icon: "▤" },
   { label: "Decisions", to: "/app/decisions", icon: "✓" },
 ];

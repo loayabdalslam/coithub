@@ -1,8 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PET_PROMPTS, PET_LIST, type PetSlug } from "./pets";
-import { providerForModel } from "./providers";
-import { callProvider, extractCapturedTasks, type ChatMsg } from "./provider-call";
+import { providerForModel, DEFAULT_MODEL } from "./providers";
+import {
+  extractCapturedTasks,
+  extractCapturedMemories,
+  callProviderWithTools,
+  supportsToolCalling,
+  type ChatMsg,
+  type ToolSpec,
+} from "./provider-call";
 
 type InvokeInput = {
   channelId: string;
@@ -90,7 +97,7 @@ export const invokePet = createServerFn({ method: "POST" })
     if (cfg && cfg.enabled === false) {
       throw new Error(`${petCfg.name} is disabled in this workspace.`);
     }
-    const model = (cfg?.model as string | undefined) || "google/gemini-3-flash-preview";
+    const model = (cfg?.model as string | undefined) || DEFAULT_MODEL;
     const provider = providerForModel(model);
     const systemPrompt = ((cfg as { custom_system?: string | null } | null)?.custom_system) || petCfg.system;
 
@@ -101,17 +108,104 @@ export const invokePet = createServerFn({ method: "POST" })
     } as never);
     const workspaceKey = (keyData as string | null) ?? null;
 
+    // ---- Unified memory: everything the agents have learned so far ----
+    const { data: memRows } = await supabase
+      .from("workspace_memories" as never)
+      .select("kind, subject, content, importance")
+      .eq("workspace_id", workspaceId)
+      .order("importance", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(60);
+    const memories = (memRows ?? []) as unknown as {
+      kind: string;
+      subject: string;
+      content: string;
+      importance: number;
+    }[];
+    const memoryBlock = memories.length
+      ? memories
+          .map((m) => `- [${m.kind}${m.subject ? `/${m.subject}` : ""}] ${m.content}`)
+          .join("\n")
+      : "(nothing learned yet)";
+
+    // ---- Composio tools the workspace has connected ----
+    let tools: ToolSpec[] = [];
+    let composioKey: string | null = null;
+    const toolAccounts: Record<string, string | null> = {};
+    const toolkitByTool: Record<string, string> = {};
+    if (supportsToolCalling(provider)) {
+      const { data: integrations } = await supabase
+        .from("workspace_integrations" as never)
+        .select("toolkit, connected_account_id, status, enabled")
+        .eq("workspace_id", workspaceId)
+        .eq("enabled", true);
+      const active = ((integrations ?? []) as unknown as {
+        toolkit: string;
+        connected_account_id: string | null;
+        status: string;
+      }[]).filter((i) => i.status === "ACTIVE");
+
+      if (active.length > 0) {
+        try {
+          const { data: ck } = await supabase.rpc("get_workspace_api_key" as never, {
+            _workspace_id: workspaceId,
+            _provider: "composio",
+          } as never);
+          composioKey = (ck as string | null) ?? null;
+          if (composioKey) {
+            const { listToolsAsOpenAI } = await import("./composio.server");
+            for (const integ of active.slice(0, 4)) {
+              const t = await listToolsAsOpenAI(composioKey, integ.toolkit, 10);
+              for (const tool of t) {
+                toolkitByTool[tool.function.name] = integ.toolkit;
+                toolAccounts[tool.function.name] = integ.connected_account_id;
+              }
+              tools = tools.concat(t);
+            }
+          }
+        } catch {
+          tools = [];
+        }
+      }
+    }
+
     messages[0].content = `${systemPrompt}\n\nYou are ${petCfg.name}, replying inside #${channel.name}${
       channel.topic ? ` (${channel.topic})` : ""
     }. Stay fully in character. Address people by name. Do NOT prefix your reply with your own name — the UI shows it. Format the reply in Markdown (headings, lists, tables, fenced code) so it renders cleanly. Keep replies focused and useful.
 
-TASK CAPTURE: When the conversation implies a concrete, actionable task, decision to execute, or todo, capture it by appending a fenced code block with language "task" containing ONLY JSON, in addition to your normal reply. Shape: {"title": "short imperative title", "description": "1-2 sentence detail", "priority": "Low|Medium|High", "assignee": "<agent-slug or null>", "due_date": "YYYY-MM-DD or null"}. Emit one block per distinct task. Valid agent slugs: ${PET_LIST.join(", ")}. Only capture genuinely actionable items — never fabricate tasks for small talk. If there is nothing actionable, do not emit a task block.`;
+SHARED MEMORY — what the team of agents already knows about this workspace, its people and its business. Use it to personalise every reply, avoid re-asking known facts, and make sharper recommendations:
+${memoryBlock}
 
-    const rawReply = await callProvider(provider, model, messages, workspaceKey);
+MEMORY CAPTURE: When you learn something durable and reusable — about a person, the workspace, the business, a preference, a process, or a strategic insight — append a fenced code block with language "memory" containing ONLY JSON: {"kind": "user|workspace|business|preference|process|fact|insight", "subject": "who/what it's about", "content": "one crisp sentence", "importance": 1-5}. One block per fact. Never store secrets, passwords or API keys. Skip it when nothing new was learned.
+
+TASK CAPTURE: When the conversation implies a concrete, actionable task, decision to execute, or todo, capture it by appending a fenced code block with language "task" containing ONLY JSON, in addition to your normal reply. Shape: {"title": "short imperative title", "description": "1-2 sentence detail", "priority": "Low|Medium|High", "assignee": "<agent-slug or null>", "due_date": "YYYY-MM-DD or null"}. Emit one block per distinct task. Valid agent slugs: ${PET_LIST.join(", ")}. Only capture genuinely actionable items — never fabricate tasks for small talk. If there is nothing actionable, do not emit a task block.${
+      tools.length
+        ? `\n\nTOOLS: You have live Composio tools connected to this workspace (${Array.from(
+            new Set(Object.values(toolkitByTool)),
+          ).join(", ")}). Use them to actually read data and take action instead of guessing, then summarise what you did. Never take a destructive or irreversible action without the user asking for it.`
+        : ""
+    }`;
+
+    const { text: rawReply, toolCalls } = await callProviderWithTools(
+      provider,
+      model,
+      messages,
+      workspaceKey,
+      tools,
+      async (name, args) => {
+        if (!composioKey) throw new Error("Composio is not configured for this workspace.");
+        const { executeTool } = await import("./composio.server");
+        const { composioUserId } = await import("./composio-util");
+        return executeTool(composioKey, name, composioUserId(workspaceId), args, toolAccounts[name]);
+      },
+    );
     if (!rawReply) throw new Error(`${petCfg.name} returned an empty reply.`);
 
-    const { cleaned, tasks: captured } = extractCapturedTasks(rawReply);
-    const reply = cleaned || rawReply;
+    const { cleaned: noTasks, tasks: captured } = extractCapturedTasks(rawReply);
+    const { cleaned, memories: capturedMemories } = extractCapturedMemories(noTasks);
+    const reply = cleaned || noTasks || rawReply;
+
+
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: inserted, error: insErr } = await supabaseAdmin
@@ -139,5 +233,34 @@ TASK CAPTURE: When the conversation implies a concrete, actionable task, decisio
       await supabaseAdmin.from("tasks" as never).insert(rows as never);
     }
 
-    return { id: inserted.id, pet, body: reply, capturedTasks: captured.length };
+
+    // Persist anything the agent learned into the shared workspace memory.
+    const VALID_KINDS = ["user", "workspace", "business", "preference", "process", "fact", "insight"];
+    if (capturedMemories.length > 0) {
+      const memRowsToAdd = capturedMemories.map((m) => ({
+        workspace_id: workspaceId,
+        kind: VALID_KINDS.includes(m.kind) ? m.kind : "fact",
+        subject: m.subject,
+        content: m.content,
+        importance: m.importance,
+        source_channel_id: channelId,
+        source_message_id: inserted.id,
+        created_by_agent: pet,
+        created_by: null,
+      }));
+      // Ignore duplicates — the dedupe index keeps memory clean.
+      for (const row of memRowsToAdd) {
+        await supabaseAdmin.from("workspace_memories" as never).insert(row as never);
+      }
+    }
+
+    return {
+      id: inserted.id,
+      pet,
+      body: reply,
+      capturedTasks: captured.length,
+      capturedMemories: capturedMemories.length,
+      toolCalls: toolCalls.length,
+    };
   });
+
