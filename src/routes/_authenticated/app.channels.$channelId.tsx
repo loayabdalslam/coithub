@@ -11,7 +11,8 @@ import { useWorkspace } from "@/lib/workspace";
 import { usePetConfigs } from "@/lib/pet-configs";
 import { RunWidgetDialog } from "@/components/RunWidgetDialog";
 import { useChannelTasks, type Task } from "@/lib/tasks";
-import { listWorkspaceTools } from "@/lib/composio.functions";
+import { listWorkspaceTools, connectToolkit, refreshIntegration } from "@/lib/composio.functions";
+import { RECOMMENDED_TOOLKITS, COMPOSIO_SIGNUP_URL } from "@/lib/composio-util";
 import { ToolkitIcon } from "@/lib/composio-icons";
 
 type Message = {
@@ -368,10 +369,14 @@ function Composer({
   const [mentionIndex, setMentionIndex] = useState(0);
   const [toolQuery, setToolQuery] = useState<string | null>(null);
   const [toolIndex, setToolIndex] = useState(0);
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ toolkit: string; prompt: string } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const invoke = useServerFn(invokePet);
   const fetchTools = useServerFn(listWorkspaceTools);
+  const startConnect = useServerFn(connectToolkit);
+  const checkConnect = useServerFn(refreshIntegration);
 
   // CO is the built-in Composio operator: always mentionable in every workspace.
   const hiredPets = Array.from(
@@ -391,17 +396,49 @@ function Composer({
     queryFn: async () => (await fetchTools({ data: { workspaceId } })).toolkits,
   });
 
+  // Usage counts are kept per workspace in localStorage so the palette can rank
+  // "top used" tools first, before falling back to the curated recommendations.
+  const usageKey = `co-tool-usage:${workspaceId}`;
+  function readUsage(): Record<string, number> {
+    if (typeof window === "undefined") return {};
+    try {
+      return JSON.parse(window.localStorage.getItem(usageKey) ?? "{}") as Record<string, number>;
+    } catch {
+      return {};
+    }
+  }
+  function bumpUsage(slug: string) {
+    if (typeof window === "undefined") return;
+    const u = readUsage();
+    u[slug] = (u[slug] ?? 0) + 1;
+    window.localStorage.setItem(usageKey, JSON.stringify(u));
+  }
+
+  const connectedToolkits = new Set((toolData ?? []).map((g) => g.toolkit));
   const paletteTools = (toolData ?? []).flatMap((g) =>
     g.tools.map((t) => ({ ...t, toolkit: g.toolkit })),
+  );
+  const usage = typeof window === "undefined" ? {} : readUsage();
+  const rankedTools = [...paletteTools].sort(
+    (a, b) => (usage[b.slug] ?? 0) - (usage[a.slug] ?? 0),
   );
   const toolMatches =
     toolQuery === null
       ? []
-      : paletteTools
-          .filter((t) =>
+      : (toolQuery.trim() === "" ? rankedTools : rankedTools.filter((t) =>
             `${t.toolkit} ${t.label} ${t.slug}`.toLowerCase().includes(toolQuery.toLowerCase()),
-          )
+          ))
           .slice(0, 40);
+
+  // Recommendations shown when a popular toolkit isn't connected yet: picking one
+  // starts the Composio authorisation flow and remembers the prompt to run after.
+  const recommended = RECOMMENDED_TOOLKITS.filter(
+    (r) => !connectedToolkits.has(r.slug),
+  ).filter((r) =>
+    toolQuery ? `${r.slug} ${r.label}`.toLowerCase().includes(toolQuery.toLowerCase()) : true,
+  );
+
+
 
 
   const mentionMatches =
@@ -432,7 +469,8 @@ function Composer({
     }
   }
 
-  function insertToolPrompt(example: string) {
+  function insertToolPrompt(example: string, slug?: string) {
+    if (slug) bumpUsage(slug);
     const el = textareaRef.current;
     const caret = el?.selectionStart ?? body.length;
     const before = body.slice(0, caret);
@@ -445,6 +483,51 @@ function Composer({
       el?.setSelectionRange(newBefore.length, newBefore.length);
     });
   }
+
+  /**
+   * A recommended toolkit isn't authorised yet: kick off the Composio OAuth
+   * flow, drop the permission link into the channel, then poll the connection
+   * and auto-run the requested prompt once access is granted.
+   */
+  async function requestAccess(toolkit: string, label: string, prompt: string) {
+    setConnecting(toolkit);
+    setErr(null);
+    setToolQuery(null);
+    try {
+      const { redirectUrl, status } = await startConnect({ data: { workspaceId, toolkit } });
+      if (status === "ACTIVE") {
+        await sendText(prompt);
+        return;
+      }
+      setPending({ toolkit, prompt });
+      await sendText(
+        `🔐 **${label} access needed** — authorise Composio here: ${redirectUrl ?? COMPOSIO_SIGNUP_URL}\n\nOnce you approve it, I'll automatically run: _${prompt}_`,
+        { skipAgents: true },
+      );
+      // Poll the Composio connection until the user finishes the grant.
+      for (let i = 0; i < 75; i++) {
+        await new Promise((r) => setTimeout(r, 4000));
+        const res = await checkConnect({ data: { workspaceId, toolkit } });
+        if (res.status === "ACTIVE") {
+          setPending(null);
+          queryClient.invalidateQueries({ queryKey: ["composio-palette", workspaceId] });
+          await sendText(`✅ ${label} connected. Running your request now.`, { skipAgents: true });
+          await sendText(prompt);
+          return;
+        }
+      }
+      setErr(`Still waiting for ${label} access. Re-run the tool once you've approved it.`);
+    } catch (e) {
+      setErr(
+        e instanceof Error
+          ? `${e.message} — register a Composio API key at ${COMPOSIO_SIGNUP_URL}`
+          : String(e),
+      );
+    } finally {
+      setConnecting(null);
+    }
+  }
+
 
   function insertMention(slug: PetSlug) {
     const el = textareaRef.current;
@@ -465,7 +548,11 @@ function Composer({
 
   async function send(e: FormEvent) {
     e.preventDefault();
-    const text = body.trim();
+    await sendText(body);
+  }
+
+  async function sendText(raw: string, opts?: { skipAgents?: boolean }) {
+    const text = raw.trim();
     if (!text || sending) return;
     setSending(true);
     setErr(null);
@@ -497,9 +584,15 @@ function Composer({
     setToolQuery(null);
     queryClient.invalidateQueries({ queryKey: ["messages", channelId] });
     setSending(false);
+    if (opts?.skipAgents) return;
 
     const mentioned = detectMentionedPets(text);
-    const enabledPets = (configs ?? []).filter((c) => c.enabled).map((c) => c.pet_slug);
+    const enabledPets = Array.from(
+      new Set<PetSlug>([
+        "co" as PetSlug,
+        ...(configs ?? []).filter((c) => c.enabled).map((c) => c.pet_slug as PetSlug),
+      ]),
+    );
     // Priority: explicit @mentions. Inside a thread with no mention, reply with
     // the agents already participating in that thread so conversations continue.
     // Otherwise fall back to auto-respond (all hired agents).
@@ -544,49 +637,111 @@ function Composer({
     <div className="shrink-0 border-t border-border bg-background p-4">
       <form onSubmit={send} className="surface-panel relative flex items-end gap-3 p-3">
         {toolQuery !== null && (
-          <div className="absolute bottom-full left-0 mb-2 w-96 overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
+          <div className="absolute bottom-full left-0 mb-2 w-[26rem] overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
             <div className="flex items-center justify-between border-b border-border px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-              <span>Import a tool · CO runs it</span>
-              <span>{paletteTools.length} available</span>
+              <span>{toolQuery.trim() === "" ? "Recommended tools · CO runs them" : "Import a tool · CO runs it"}</span>
+              <span>{paletteTools.length} connected</span>
             </div>
-            {toolMatches.length > 0 ? (
-              <ul className="max-h-72 overflow-auto py-1">
-                {toolMatches.map((t, i) => (
-                  <li key={t.slug}>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        insertToolPrompt(t.example);
-                      }}
-                      onMouseEnter={() => setToolIndex(i)}
-                      className={`flex w-full items-start gap-2 px-3 py-2 text-left ${
-                        i === toolIndex ? "bg-secondary" : "hover:bg-secondary"
-                      }`}
-                    >
-                      <ToolkitIcon slug={t.toolkit} size={22} className="mt-0.5" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium">{t.label}</span>
-                        <span className="block truncate text-[11px] text-muted-foreground">
-                          {t.toolkit} · {t.description || t.slug}
-                        </span>
-                        <span className="mt-0.5 block truncate text-[11px] text-primary">
-                          {t.example}…
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="px-3 py-3 text-xs text-muted-foreground">
-                {paletteTools.length === 0
-                  ? "No Composio tools connected yet. An admin can add the Composio API key and authorise apps in Settings → Integrations."
-                  : "No tool matches that."}
+            <div className="max-h-80 overflow-auto py-1">
+              {toolMatches.length > 0 && (
+                <ul>
+                  {toolMatches.map((t, i) => (
+                    <li key={t.slug}>
+                      <div
+                        className={`flex w-full items-start gap-2 px-3 py-2 text-left ${
+                          i === toolIndex ? "bg-secondary" : "hover:bg-secondary"
+                        }`}
+                        onMouseEnter={() => setToolIndex(i)}
+                      >
+                        <ToolkitIcon slug={t.toolkit} size={22} className="mt-0.5" />
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            insertToolPrompt(t.example, t.slug);
+                          }}
+                          className="min-w-0 flex-1 text-left"
+                        >
+                          <span className="block text-sm font-medium">
+                            {t.label}
+                            {(usage[t.slug] ?? 0) > 0 && (
+                              <span className="ml-1 text-[10px] text-muted-foreground">
+                                · used {usage[t.slug]}×
+                              </span>
+                            )}
+                          </span>
+                          <span className="block truncate text-[11px] text-muted-foreground">
+                            {t.toolkit} · {t.description || t.slug}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[11px] text-primary">
+                            {t.example}…
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            bumpUsage(t.slug);
+                            setToolQuery(null);
+                            setBody("");
+                            void sendText(t.example);
+                          }}
+                          className="mt-0.5 shrink-0 rounded-md border border-border px-2 py-1 text-[11px] hover:bg-background"
+                        >
+                          Send
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {recommended.length > 0 && (
+                <>
+                  <div className="border-t border-border px-3 py-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Popular · needs access
+                  </div>
+                  <ul>
+                    {recommended.map((r) => (
+                      <li key={r.slug}>
+                        <button
+                          type="button"
+                          disabled={connecting !== null}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            void requestAccess(r.slug, r.label, r.prompts[0]);
+                          }}
+                          className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-secondary disabled:opacity-50"
+                        >
+                          <ToolkitIcon slug={r.slug} size={22} className="mt-0.5" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium">{r.label}</span>
+                            <span className="block truncate text-[11px] text-primary">
+                              {r.prompts[0]}…
+                            </span>
+                          </span>
+                          <span className="mt-0.5 shrink-0 text-[11px] text-muted-foreground">
+                            {connecting === r.slug ? "connecting…" : "grant access"}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {toolMatches.length === 0 && recommended.length === 0 && (
+                <div className="px-3 py-3 text-xs text-muted-foreground">No tool matches that.</div>
+              )}
+            </div>
+            {pending && (
+              <div className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
+                Waiting for {pending.toolkit} access — your request runs automatically once approved.
               </div>
             )}
           </div>
         )}
+
 
         {mentionQuery !== null && (
           <div className="absolute bottom-full left-0 mb-2 w-72 overflow-hidden rounded-lg border border-border bg-popover shadow-lg">
