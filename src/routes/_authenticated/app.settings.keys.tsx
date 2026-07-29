@@ -9,7 +9,8 @@ export const Route = createFileRoute("/_authenticated/app/settings/keys")({
   component: KeysSettings,
 });
 
-const BYO_PROVIDERS: ProviderId[] = ["google", "openai", "openrouter", "groq", "gemini", "chatgpt"];
+// Groq first — it's the default provider used across the app.
+const BYO_PROVIDERS: ProviderId[] = ["groq", "google", "openai", "openrouter", "gemini", "chatgpt"];
 
 type KeyRow = { provider: string; masked: string; hasKey: boolean };
 
