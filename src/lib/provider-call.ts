@@ -179,6 +179,7 @@ export async function callProviderWithTools(
   const rawModel = model.includes("/") ? model.split("/").slice(1).join("/") : model;
   const convo: RawMsg[] = messages.map((m) => ({ role: m.role, content: m.content }));
   const used: { name: string; ok: boolean }[] = [];
+  let toolFailures = 0;
 
   for (let step = 0; step < maxSteps; step++) {
     const resp = await fetch(oa.url, {
@@ -188,9 +189,42 @@ export async function callProviderWithTools(
         Authorization: `Bearer ${workspaceKey}`,
         ...(oa.extraHeaders ?? {}),
       },
-      body: JSON.stringify({ model: rawModel, messages: convo, tools, tool_choice: "auto" }),
+      body: JSON.stringify({
+        model: rawModel,
+        messages: convo,
+        tools,
+        tool_choice: "auto",
+        temperature: 0.2,
+      }),
     });
-    if (!resp.ok) await throwHttp(oa.label, resp);
+    if (!resp.ok) {
+      // Groq (and some OSS models) sometimes emit a malformed tool call and
+      // return 400 `tool_use_failed`. That's a generation glitch, not a bad
+      // request — retry, then degrade to a plain answer instead of crashing.
+      if (resp.status === 400) {
+        const body = await resp.clone().text().catch(() => "");
+        if (body.includes("tool_use_failed") || body.includes("failed_generation")) {
+          toolFailures += 1;
+          if (toolFailures < 2) continue;
+          const text = await callProvider(
+            provider,
+            model,
+            [
+              ...messages,
+              {
+                role: "system",
+                content:
+                  "Tool calling failed for this turn. Answer from what you already know, and tell the user the live tool call could not be completed this time.",
+              },
+            ],
+            workspaceKey,
+          );
+          return { text, toolCalls: used };
+        }
+      }
+      await throwHttp(oa.label, resp);
+    }
+
     const json = (await resp.json()) as {
       choices?: {
         message?: {
