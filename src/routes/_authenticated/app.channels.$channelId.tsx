@@ -495,10 +495,17 @@ function Composer({
     setToolQuery(null);
     try {
       const { redirectUrl, status } = await startConnect({ data: { workspaceId, toolkit } });
+      if (status === "NO_KEY") {
+        setErr(
+          `Composio isn't set up for this workspace yet. An admin can add an API key in Settings → Integrations (${COMPOSIO_SIGNUP_URL}).`,
+        );
+        return;
+      }
       if (status === "ACTIVE") {
         await sendText(prompt);
         return;
       }
+
       setPending({ toolkit, prompt });
       await sendText(
         `🔐 **${label} access needed** — authorise Composio here: ${redirectUrl ?? COMPOSIO_SIGNUP_URL}\n\nOnce you approve it, I'll automatically run: _${prompt}_`,
