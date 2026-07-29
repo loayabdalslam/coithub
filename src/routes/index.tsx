@@ -2,9 +2,33 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AGENTS, AGENT_LIST, type AgentSlug } from "@/lib/agents";
 import { PetAvatar } from "@/components/PetAvatar";
+import {
+  Hero3DStage,
+  ToolsSlider,
+  AgentsCarousel,
+  ScreenshotDeck,
+} from "@/components/landing/Showcase3D";
 
 export const Route = createFileRoute("/")({
   component: Landing,
+  head: () => ({
+    meta: [
+      { title: "Coithub — An AI-native workspace of 20 AI teammates" },
+      {
+        name: "description",
+        content:
+          "Coithub is an AI-native operating system: 20 specialist AI teammates, Composio tools, shared memory, tasks and threads in one live workspace.",
+      },
+      { property: "og:title", content: "Coithub — An AI-native workspace of 20 AI teammates" },
+      {
+        property: "og:description",
+        content:
+          "20 AI specialists, 250+ Composio tools, auto-captured tasks and shared memory — running your company in real time.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
 });
 
 function Landing() {
@@ -12,6 +36,9 @@ function Landing() {
     <div className="min-h-screen bg-background text-foreground">
       <Header />
       <Hero />
+      <ToolsSlider />
+      <AgentsCarousel />
+      <ScreenshotDeck />
       <HubMarquee />
       <WorkflowSection />
       <OnboardingSection />
@@ -20,6 +47,7 @@ function Landing() {
     </div>
   );
 }
+
 
 function Header() {
   return (
