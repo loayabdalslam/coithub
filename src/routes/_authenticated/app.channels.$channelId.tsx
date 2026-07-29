@@ -364,14 +364,43 @@ function Composer({
   const [widgetOpen, setWidgetOpen] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
+  const [toolQuery, setToolQuery] = useState<string | null>(null);
+  const [toolIndex, setToolIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const invoke = useServerFn(invokePet);
+  const fetchTools = useServerFn(listWorkspaceTools);
 
-  const hiredPets = (configs ?? [])
-    .filter((c) => c.enabled)
-    .map((c) => c.pet_slug as PetSlug)
-    .filter((slug) => PET_LIST.includes(slug));
+  // CO is the built-in Composio operator: always mentionable in every workspace.
+  const hiredPets = Array.from(
+    new Set<PetSlug>([
+      "co" as PetSlug,
+      ...(configs ?? [])
+        .filter((c) => c.enabled)
+        .map((c) => c.pet_slug as PetSlug)
+        .filter((slug) => PET_LIST.includes(slug)),
+    ]),
+  );
+
+  const { data: toolData } = useQuery({
+    queryKey: ["composio-palette", workspaceId],
+    enabled: !!workspaceId,
+    staleTime: 5 * 60_000,
+    queryFn: async () => (await fetchTools({ data: { workspaceId } })).toolkits,
+  });
+
+  const paletteTools = (toolData ?? []).flatMap((g) =>
+    g.tools.map((t) => ({ ...t, toolkit: g.toolkit })),
+  );
+  const toolMatches =
+    toolQuery === null
+      ? []
+      : paletteTools
+          .filter((t) =>
+            `${t.toolkit} ${t.label} ${t.slug}`.toLowerCase().includes(toolQuery.toLowerCase()),
+          )
+          .slice(0, 40);
+
 
   const mentionMatches =
     mentionQuery === null
