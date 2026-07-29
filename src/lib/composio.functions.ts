@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 // workspace id, so every member (and every agent) shares the same tools.
 import {
   composioKeyOrNull,
+  composioKeyFor,
   composioUserId,
   humanizeTool,
   examplePrompt,
@@ -77,7 +78,7 @@ export const refreshIntegration = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const key = await keyFor(supabase as never, data.workspaceId);
+    const key = await composioKeyFor(supabase as never, data.workspaceId);
     const { data: row } = await supabase
       .from("workspace_integrations" as never)
       .select("connected_account_id")
@@ -117,7 +118,7 @@ export const disconnectToolkit = createServerFn({ method: "POST" })
 
     if (accountId) {
       try {
-        const key = await keyFor(supabase as never, data.workspaceId);
+        const key = await composioKeyFor(supabase as never, data.workspaceId);
         const { deleteConnection } = await import("./composio.server");
         await deleteConnection(key, accountId);
       } catch {
@@ -159,7 +160,7 @@ export const listWorkspaceTools = createServerFn({ method: "POST" })
 
     let key: string;
     try {
-      key = await keyFor(supabase as never, data.workspaceId);
+      key = await composioKeyFor(supabase as never, data.workspaceId);
     } catch {
       return { toolkits: [] as ToolPaletteGroup[] };
     }
