@@ -1,26 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
 // Composio connections are workspace-scoped: the Composio "user" is the
 // workspace id, so every member (and every agent) shares the same tools.
-export function composioUserId(workspaceId: string): string {
-  return `ws_${workspaceId}`;
-}
-
-async function keyFor(
-  supabase: { rpc: (fn: never, args: never) => Promise<{ data: unknown }> },
-  workspaceId: string,
-): Promise<string> {
-  const { data } = await supabase.rpc("get_workspace_api_key" as never, {
-    _workspace_id: workspaceId,
-    _provider: "composio",
-  } as never);
-  const key = (data as string | null) ?? null;
-  if (!key) {
-    throw new Error("No Composio API key for this workspace. An admin can add one in Settings → Integrations.");
-  }
-  return key;
-}
+import { composioKeyFor as keyFor, composioUserId } from "./composio-util";
 
 export const searchToolkits = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
