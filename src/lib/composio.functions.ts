@@ -116,3 +116,72 @@ export const disconnectToolkit = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Tools the workspace can actually use right now (active Composio connections),
+ * grouped by toolkit and with a ready-to-send example prompt for each tool.
+ * Powers the "!" tool palette in the message composer.
+ */
+export const listWorkspaceTools = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { workspaceId: string }) => {
+    if (!i || typeof i.workspaceId !== "string") throw new Error("Invalid input");
+    return i;
+  })
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: rows } = await supabase
+      .from("workspace_integrations" as never)
+      .select("toolkit, status, enabled")
+      .eq("workspace_id", data.workspaceId)
+      .eq("enabled", true);
+    const active = ((rows ?? []) as unknown as { toolkit: string; status: string }[]).filter(
+      (r) => r.status === "ACTIVE",
+    );
+    if (active.length === 0) return { toolkits: [] as ToolPaletteGroup[] };
+
+    let key: string;
+    try {
+      key = await keyFor(supabase as never, data.workspaceId);
+    } catch {
+      return { toolkits: [] as ToolPaletteGroup[] };
+    }
+
+    const { listToolsAsOpenAI } = await import("./composio.server");
+    const groups: ToolPaletteGroup[] = [];
+    for (const integ of active.slice(0, 8)) {
+      try {
+        const tools = await listToolsAsOpenAI(key, integ.toolkit, 10);
+        groups.push({
+          toolkit: integ.toolkit,
+          tools: tools.map((t) => ({
+            slug: t.function.name,
+            label: humanizeTool(t.function.name, integ.toolkit),
+            description: (t.function.description ?? "").slice(0, 160),
+            example: examplePrompt(t.function.name, integ.toolkit),
+          })),
+        });
+      } catch {
+        /* skip toolkits that fail to list */
+      }
+    }
+    return { toolkits: groups };
+  });
+
+export type ToolPaletteGroup = {
+  toolkit: string;
+  tools: { slug: string; label: string; description: string; example: string }[];
+};
+
+function humanizeTool(slug: string, toolkit: string): string {
+  const parts = slug.split("_");
+  if (parts[0]?.toLowerCase() === toolkit.replace(/_/g, "").toLowerCase()) parts.shift();
+  const words = parts.join(" ").toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+function examplePrompt(slug: string, toolkit: string): string {
+  const action = humanizeTool(slug, toolkit).toLowerCase();
+  const app = toolkit.replace(/_/g, " ");
+  return `@co ${action} in ${app} — `;
+}
