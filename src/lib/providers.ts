@@ -81,10 +81,10 @@ export type ModelOption = {
 };
 
 export const MODELS: ModelOption[] = [
-  // Lovable-gateway Google
-  { id: "google/gemini-3-flash-preview", label: "Gemini 3 Flash", provider: "google", tag: "fast", description: "Default. Fast, multimodal." },
+  // Google AI Studio (BYO key)
+  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "google", tag: "fast", description: "Fast, multimodal." },
   { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro", provider: "google", tag: "smart", description: "Deeper reasoning." },
-  { id: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", provider: "google", tag: "cheap", description: "Cheapest, high volume." },
+  { id: "google/gemini-2.0-flash", label: "Gemini 2.0 Flash", provider: "google", tag: "cheap", description: "Cheapest, high volume." },
   // Lovable-gateway OpenAI
   { id: "openai/gpt-5-mini", label: "GPT-5 Mini", provider: "openai", tag: "fast", description: "Balanced OpenAI." },
   { id: "openai/gpt-5", label: "GPT-5", provider: "openai", tag: "smart", description: "Strong all-rounder." },
@@ -97,7 +97,7 @@ export const MODELS: ModelOption[] = [
   { id: "groq/llama-3.1-8b-instant", label: "Llama 3.1 8B (Groq)", provider: "groq", tag: "cheap", description: "Instant replies." },
   // Gemini direct (BYO)
   { id: "gemini/gemini-2.0-flash", label: "Gemini 2.0 Flash (direct)", provider: "gemini", tag: "fast", description: "Direct Google AI Studio." },
-  { id: "gemini/gemini-1.5-pro", label: "Gemini 1.5 Pro (direct)", provider: "gemini", tag: "smart", description: "Direct Google AI Studio." },
+  { id: "gemini/gemini-2.5-pro", label: "Gemini 2.5 Pro (direct)", provider: "gemini", tag: "smart", description: "Direct Google AI Studio." },
   // OpenAI direct (BYO)
   { id: "chatgpt/gpt-4o-mini", label: "GPT-4o Mini (direct)", provider: "chatgpt", tag: "fast", description: "Direct OpenAI key." },
   { id: "chatgpt/gpt-4o", label: "GPT-4o (direct)", provider: "chatgpt", tag: "smart", description: "Direct OpenAI key." },
