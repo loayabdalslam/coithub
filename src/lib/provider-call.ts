@@ -21,15 +21,31 @@ export async function callProvider(
 ): Promise<string> {
   // Strip provider prefix — providers expect the raw model id.
   const stripped = model.includes("/") ? model.split("/").slice(1).join("/") : model;
-  // Map retired Google model ids to current ones (old saved selections).
-  const RETIRED: Record<string, string> = {
-    "gemini-2.5-flash-lite": "gemini-2.0-flash",
-    "gemini-3-flash-preview": "gemini-2.5-flash",
-    "gemini-1.5-pro": "gemini-2.5-pro",
-    "gemini-1.5-flash": "gemini-2.5-flash",
+  // Map retired model ids to current ones (old saved selections).
+  const RETIRED_GOOGLE: Record<string, string> = {
+    "gemini-2.5-flash-lite": "gemini-3-flash",
+    "gemini-3-flash-preview": "gemini-3-flash",
+    "gemini-2.0-flash": "gemini-3-flash",
+    "gemini-1.5-pro": "gemini-3-pro",
+    "gemini-1.5-flash": "gemini-3-flash",
+    "gemini-2.5-pro": "gemini-3-pro",
+  };
+  const RETIRED_OPENAI: Record<string, string> = {
+    "gpt-4o": "gpt-5.2",
+    "gpt-4o-mini": "gpt-5.2-mini",
+    "gpt-4.1": "gpt-5.2",
+    "gpt-4.1-mini": "gpt-5.2-mini",
+    "gpt-5": "gpt-5.2",
+    "gpt-5-mini": "gpt-5.2-mini",
   };
   const rawModel =
-    provider === "google" || provider === "gemini" ? (RETIRED[stripped] ?? stripped) : stripped;
+    provider === "google" || provider === "gemini"
+      ? (RETIRED_GOOGLE[stripped] ?? stripped)
+      : provider === "openai" || provider === "chatgpt"
+        ? (RETIRED_OPENAI[stripped] ?? stripped)
+        : stripped;
+
+
 
   if (!workspaceKey) {
     throw new Error(
