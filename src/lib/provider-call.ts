@@ -137,6 +137,63 @@ export type ToolSpec = {
 
 type RawMsg = Record<string, unknown>;
 
+function compactSchema(node: unknown, depth = 0): unknown {
+  if (!node || typeof node !== "object" || depth > 5) return node;
+  if (Array.isArray(node)) return node.slice(0, 12).map((item) => compactSchema(item, depth + 1));
+  const source = node as Record<string, unknown>;
+  const compact: Record<string, unknown> = {};
+  for (const key of ["type", "required", "additionalProperties"] as const) {
+    if (source[key] !== undefined) compact[key] = source[key];
+  }
+  if (Array.isArray(source.enum)) compact.enum = source.enum.slice(0, 20);
+  if (source.items !== undefined) compact.items = compactSchema(source.items, depth + 1);
+  if (source.properties && typeof source.properties === "object" && !Array.isArray(source.properties)) {
+    compact.properties = Object.fromEntries(
+      Object.entries(source.properties as Record<string, unknown>)
+        .slice(0, 30)
+        .map(([name, spec]) => [name, compactSchema(spec, depth + 1)]),
+    );
+  }
+  return compact;
+}
+
+function selectRelevantTools(tools: ToolSpec[], messages: ChatMsg[], limit: number): ToolSpec[] {
+  const request = [...messages].reverse().find((message) => message.role === "user")?.content.toLowerCase() ?? "";
+  const words = new Set(request.match(/[a-z0-9_]{3,}/g) ?? []);
+  return tools
+    .map((tool, index) => {
+      const searchable = `${tool.function.name} ${tool.function.description ?? ""}`.toLowerCase();
+      let score = 0;
+      for (const word of words) if (searchable.includes(word)) score += word.length;
+      if (request.includes("email") && searchable.includes("gmail")) score += 30;
+      if (request.includes("unread") && searchable.includes("fetch")) score += 20;
+      return { tool, index, score };
+    })
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, limit)
+    .map(({ tool }) => ({
+      type: "function",
+      function: {
+        name: tool.function.name,
+        description: tool.function.description?.slice(0, 240),
+        parameters: compactSchema(tool.function.parameters) as Record<string, unknown>,
+      },
+    }));
+}
+
+function compactMessages(messages: RawMsg[], aggressive: boolean): RawMsg[] {
+  const system = messages.find((message) => message.role === "system");
+  const recent = messages.filter((message) => message.role !== "system").slice(aggressive ? -6 : -10);
+  const selected = system ? [system, ...recent] : recent;
+  return selected.map((message) => ({
+    ...message,
+    content:
+      typeof message.content === "string"
+        ? message.content.slice(aggressive ? -6000 : -12000)
+        : message.content,
+  }));
+}
+
 export function supportsToolCalling(provider: ProviderId): boolean {
   return provider === "openai" || provider === "chatgpt" || provider === "groq" || provider === "openrouter";
 }
@@ -184,18 +241,23 @@ export async function callProviderWithTools(
   const convo: RawMsg[] = messages.map((m) => ({ role: m.role, content: m.content }));
   const used: { name: string; ok: boolean }[] = [];
   let toolFailures = 0;
+  let sizeFailures = 0;
 
   for (let step = 0; step < maxSteps; step++) {
+    const requestTools = provider === "groq"
+      ? selectRelevantTools(tools, messages, sizeFailures > 0 ? 3 : 6)
+      : tools;
+    const baseMessages = provider === "groq" ? compactMessages(convo, sizeFailures > 0) : convo;
     const requestMessages = toolFailures > 0
       ? [
-          ...convo,
+          ...baseMessages,
           {
             role: "system",
             content:
               "Return at most one tool call. Its arguments must be one complete JSON object that strictly matches the selected tool schema. Do not emit XML, function tags, commentary, or truncated JSON.",
           },
         ]
-      : convo;
+      : baseMessages;
     const resp = await fetch(oa.url, {
       method: "POST",
       headers: {
@@ -206,13 +268,21 @@ export async function callProviderWithTools(
       body: JSON.stringify({
         model: rawModel,
         messages: requestMessages,
-        tools,
+        tools: requestTools,
         tool_choice: "auto",
         parallel_tool_calls: false,
         temperature: toolFailures > 0 ? 0 : 0.2,
       }),
     });
     if (!resp.ok) {
+      if (resp.status === 413 && provider === "groq") {
+        sizeFailures += 1;
+        if (sizeFailures < 2) continue;
+        return {
+          text: "This integration request is too large for the current Groq usage limit. Please ask for fewer items or connect a Groq plan with a higher token limit.",
+          toolCalls: used,
+        };
+      }
       // Groq (and some OSS models) sometimes emit a malformed tool call and
       // return 400 `tool_use_failed`. That's a generation glitch, not a bad
       // request — retry, then degrade to a plain answer instead of crashing.
