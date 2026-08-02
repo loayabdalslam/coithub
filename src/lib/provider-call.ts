@@ -175,13 +175,27 @@ export async function callProviderWithTools(
     );
   }
 
-  const oa = OA_ENDPOINTS[provider]!;
+  const oa = OA_ENDPOINTS[provider];
+  if (!oa) {
+    const text = await callProvider(provider, model, messages, workspaceKey);
+    return { text, toolCalls: [] };
+  }
   const rawModel = model.includes("/") ? model.split("/").slice(1).join("/") : model;
   const convo: RawMsg[] = messages.map((m) => ({ role: m.role, content: m.content }));
   const used: { name: string; ok: boolean }[] = [];
   let toolFailures = 0;
 
   for (let step = 0; step < maxSteps; step++) {
+    const requestMessages = toolFailures > 0
+      ? [
+          ...convo,
+          {
+            role: "system",
+            content:
+              "Return at most one tool call. Its arguments must be one complete JSON object that strictly matches the selected tool schema. Do not emit XML, function tags, commentary, or truncated JSON.",
+          },
+        ]
+      : convo;
     const resp = await fetch(oa.url, {
       method: "POST",
       headers: {
@@ -191,10 +205,11 @@ export async function callProviderWithTools(
       },
       body: JSON.stringify({
         model: rawModel,
-        messages: convo,
+        messages: requestMessages,
         tools,
         tool_choice: "auto",
-        temperature: 0.2,
+        parallel_tool_calls: false,
+        temperature: toolFailures > 0 ? 0 : 0.2,
       }),
     });
     if (!resp.ok) {
@@ -206,20 +221,30 @@ export async function callProviderWithTools(
         if (body.includes("tool_use_failed") || body.includes("failed_generation")) {
           toolFailures += 1;
           if (toolFailures < 2) continue;
-          const text = await callProvider(
-            provider,
-            model,
-            [
-              ...messages,
-              {
-                role: "system",
-                content:
-                  "Tool calling failed for this turn. Answer from what you already know, and tell the user the live tool call could not be completed this time.",
-              },
-            ],
-            workspaceKey,
-          );
-          return { text, toolCalls: used };
+          try {
+            const text = await callProvider(
+              provider,
+              model,
+              [
+                ...messages,
+                {
+                  role: "system",
+                  content:
+                    "The live integration could not produce a valid tool call. Do not claim that you accessed live data. Briefly ask the user to retry the request.",
+                },
+              ],
+              workspaceKey,
+            );
+            return {
+              text: text || "I couldn't complete the live integration request because the model produced an invalid tool call. Please try again.",
+              toolCalls: used,
+            };
+          } catch {
+            return {
+              text: "I couldn't complete the live integration request because the model produced an invalid tool call. Please try again.",
+              toolCalls: used,
+            };
+          }
         }
       }
       await throwHttp(oa.label, resp);
