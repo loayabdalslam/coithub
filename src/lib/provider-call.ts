@@ -20,7 +20,16 @@ export async function callProvider(
   workspaceKey: string | null,
 ): Promise<string> {
   // Strip provider prefix — providers expect the raw model id.
-  const rawModel = model.includes("/") ? model.split("/").slice(1).join("/") : model;
+  const stripped = model.includes("/") ? model.split("/").slice(1).join("/") : model;
+  // Map retired Google model ids to current ones (old saved selections).
+  const RETIRED: Record<string, string> = {
+    "gemini-2.5-flash-lite": "gemini-2.0-flash",
+    "gemini-3-flash-preview": "gemini-2.5-flash",
+    "gemini-1.5-pro": "gemini-2.5-pro",
+    "gemini-1.5-flash": "gemini-2.5-flash",
+  };
+  const rawModel =
+    provider === "google" || provider === "gemini" ? (RETIRED[stripped] ?? stripped) : stripped;
 
   if (!workspaceKey) {
     throw new Error(
